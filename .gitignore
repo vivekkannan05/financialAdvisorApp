@@ -1,0 +1,24 @@
+# Java / Maven
+financial-advisor-api/target/
+*.class
+*.jar
+*.war
+
+# Node / React
+financial-advisor-ui/node_modules/
+financial-advisor-ui/dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Environment (contains secrets)
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
