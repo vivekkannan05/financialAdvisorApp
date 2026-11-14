@@ -376,9 +376,9 @@ The application SHALL be a single Spring Boot monolith. Separate microservices f
 
 | Component | Choice | Version | Rationale |
 |-----------|--------|---------|-----------|
-| Backend language | Java | 25 LTS | Latest LTS; BigDecimal for financial precision, virtual threads for concurrent LLM calls, records for data models. [Source: Grill — stack] |
-| Backend framework | Spring Boot | Latest stable (prefer 4.x if Spring AI compatible) | Production-grade, Spring AI integration, DynamoDB support via AWS SDK v2. [Source: Grill — stack] |
-| AI/LLM framework | Spring AI | Latest stable | Chat client, function calling for specialist delegation, RAG, structured output. [Source: Grill — stack] |
+| Backend language | Java | 25 LTS (25.0.5) | Latest LTS; BigDecimal for financial precision, virtual threads for concurrent LLM calls, records for data models. [Source: Grill — stack] |
+| Backend framework | Spring Boot | 4.1.2 | Production-grade, Spring AI integration, DynamoDB support via AWS SDK v2. [Source: Grill — stack] |
+| AI/LLM framework | Spring AI | 2.0.2 | Chat client, function calling for specialist delegation, RAG, structured output. [Source: Grill — stack] |
 | Frontend | React + Vite + TypeScript + Tailwind CSS | Latest stable | Interactive dashboard, fast build tooling, type safety, utility-first styling. [Source: Grill — react_detail] |
 | Database | DynamoDB (Local via LocalStack for dev) | Latest | Flexible schema, AWS-native, snapshot versioning, migrate to cloud DynamoDB later. [Source: Grill — database] |
 | LLM (local dev) | Ollama | Latest | Run LLMs locally (Llama 3, Mistral), free, private — no financial data sent externally. [Source: Grill — llm_strategy] |
