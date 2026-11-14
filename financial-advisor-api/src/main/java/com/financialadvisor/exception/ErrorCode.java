@@ -1,0 +1,15 @@
+package com.financialadvisor.exception;
+
+public enum ErrorCode {
+    INSUFFICIENT_DATA,
+    STALE_DATA,
+    UNAUTHORIZED,
+    VALIDATION_ERROR,
+    LLM_UNAVAILABLE,
+    CALCULATION_ERROR,
+    INTERNAL_ERROR,
+    BAD_REQUEST,
+    NOT_FOUND,
+    DOUBLE_COUNTING,
+    EMERGENCY_FUND_BREACH
+}

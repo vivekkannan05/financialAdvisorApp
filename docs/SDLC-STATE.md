@@ -5,7 +5,7 @@
 | 1. Spec | /idea-to-spec | ✅ Done | 2026-11-14 | SPEC-v1.md locked (v2.0): 42 FRs, 25 NFRs, 6 ECs, 28 UTs, 12 ITs, 7 dev phases |
 | 2. Design | /spec-to-design-doc | ✅ Done | 2026-11-14 | Design doc: 12 sections, 5 diagrams, 44 decisions, 9 open questions |
 | 3. Stories | /spec-to-stories | ⏭️ Skipped | 2026-11-14 | User managing stories independently |
-| 4. Build | /scaffold-and-build | ⬜ | — | — |
+| 4. Build | /scaffold-and-build | 🔄 In Progress | — | Scaffold done (d314e52). DP-1 Foundation next. |
 | 5. Test | /code-to-test | ⬜ | — | — |
 | 6. Ship | /ship-to-production | ⬜ | — | — |
 

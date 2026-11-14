@@ -4,25 +4,19 @@ spring:
   threads:
     virtual:
       enabled: true
-  security:
-    user:
-      name: ${JWT_DEFAULT_USER:admin}
-      password: ${JWT_DEFAULT_PASSWORD:changeme}
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${LLM_MODEL:llama3.1:8b}
+          temperature: 0.3
+        timeout: ${LLM_TIMEOUT_SECONDS:30}s
 
 server:
   port: 8080
   servlet:
     context-path: /
-
-# Spring AI - Ollama configuration
-spring.ai:
-  ollama:
-    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-    chat:
-      options:
-        model: ${LLM_MODEL:llama3.1:8b}
-        temperature: 0.3
-      timeout: ${LLM_TIMEOUT_SECONDS:30}s
 
 # AWS DynamoDB
 aws:
@@ -68,5 +62,3 @@ logging:
   level:
     com.financialadvisor: INFO
     org.springframework.ai: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
