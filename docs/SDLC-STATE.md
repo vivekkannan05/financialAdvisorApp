@@ -2,7 +2,7 @@
 
 | Phase | Skill | Status | Completed | Handoff |
 |-------|-------|--------|-----------|---------|
-| 1. Spec | /idea-to-spec | 🔄 In Progress | — | — |
+| 1. Spec | /idea-to-spec | ✅ Done | 2026-11-14 | SPEC-v1.md locked (v2.0): 42 FRs, 25 NFRs, 6 ECs, 28 UTs, 12 ITs, 7 dev phases |
 | 2. Design | /spec-to-design-doc | ⬜ | — | — |
 | 3. Stories | /spec-to-stories | ⬜ | — | — |
 | 4. Build | /scaffold-and-build | ⬜ | — | — |
