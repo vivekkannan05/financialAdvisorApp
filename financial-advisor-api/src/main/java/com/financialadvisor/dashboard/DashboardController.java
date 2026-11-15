@@ -5,6 +5,7 @@ import com.financialadvisor.engine.model.*;
 import com.financialadvisor.engine.risk.CompositeRiskResult;
 import com.financialadvisor.engine.risk.RiskAssessor;
 import com.financialadvisor.engine.risk.RiskContext;
+import com.financialadvisor.math.FinancialMathUtil;
 import com.financialadvisor.exception.AppException;
 import com.financialadvisor.exception.ErrorCode;
 import com.financialadvisor.profile.ProfileService;
@@ -147,9 +148,15 @@ public class DashboardController {
                         ? List.of("Constraining factor: " + risk.constrainingDimension())
                         : List.of()));
 
-        // 7. Income Concentration
+        // 7. Income Concentration — only count sources with a positive value
         Map<String, Object> income = getSection(data, "income");
-        int incomeSources = income != null ? income.size() : 0;
+        int incomeSources = 0;
+        if (income != null) {
+            for (Object val : income.values()) {
+                BigDecimal amount = FinancialMathUtil.toBigDecimal(val);
+                if (amount != null && amount.signum() > 0) incomeSources++;
+            }
+        }
         String concentrationStatus = incomeSources <= 1 ? "concentrated" : "diversified";
         dims.add(new DashboardResponse.DimensionStatus(7, "Income Concentration",
                 concentrationStatus,
