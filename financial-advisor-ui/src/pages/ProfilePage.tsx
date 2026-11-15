@@ -30,6 +30,7 @@ interface InsuranceItem {
 interface InvestmentItem {
   id: string;
   instrument: string;
+  name: string;
   amount: number;
   frequency: string;
   expectedReturn: number;
@@ -256,6 +257,15 @@ const INVESTMENT_KEY_MAP: Record<string, string> = {
 
 const INVESTMENT_FREQUENCIES = ['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'] as const;
 
+const INSTRUMENT_DEFAULT_RETURN: Record<string, number> = {
+  'SIP (Mutual Funds)': 12, 'PPF Contribution': 7.1, 'NPS Contribution': 9,
+  'ELSS (Tax Saving MF)': 12, 'Sukanya Samriddhi (SSY)': 8,
+  'Recurring Deposit (RD)': 6.5, 'Direct Stocks': 12,
+  'Gold / SGB': 9, 'EPF Voluntary (VPF)': 8.25, 'NSC / KVP': 7.7,
+  'ULIP Premium': 8, 'Chit Fund': 10, 'Cryptocurrency': 15,
+  'Other Investment': 10,
+};
+
 /* ══════════════════════════════════════════════════════════════
    Shared helpers
    ══════════════════════════════════════════════════════════════ */
@@ -401,36 +411,47 @@ function insuranceToObject(policies: InsuranceItem[]): Record<string, Record<str
   return obj;
 }
 
+function resolveReturn(instrument: string, explicit?: number): number {
+  if (explicit && explicit > 0) return explicit;
+  return INSTRUMENT_DEFAULT_RETURN[instrument] ?? 10;
+}
+
 function parseInvestments(raw: unknown, keyMap: Record<string, string>): InvestmentItem[] {
   if (!raw) return [];
   if (Array.isArray(raw)) {
-    return (raw as InvestmentItem[]).map((inv) => ({
-      id: inv.id || uid(),
-      instrument: String(inv.instrument || ''),
-      amount: Number(inv.amount) || 0,
-      frequency: String(inv.frequency || 'Monthly'),
-      expectedReturn: Number(inv.expectedReturn) || 0,
-    }));
+    return (raw as InvestmentItem[]).map((inv) => {
+      const inst = String(inv.instrument || '');
+      return {
+        id: inv.id || uid(),
+        instrument: inst,
+        name: String(inv.name || ''),
+        amount: Number(inv.amount) || 0,
+        frequency: String(inv.frequency || 'Monthly'),
+        expectedReturn: resolveReturn(inst, Number(inv.expectedReturn)),
+      };
+    });
   }
   const obj = raw as Record<string, unknown>;
   const items: InvestmentItem[] = [];
   for (const [key, value] of Object.entries(obj)) {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       const inv = value as Record<string, unknown>;
+      const inst = String(inv.instrument || '') || keyMap[key] || key;
+      const schemeName = String(inv.name || '');
       items.push({
         id: uid(),
-        instrument: keyMap[key] || key,
+        instrument: inst,
+        name: schemeName || (keyMap[key] ? '' : (inst === key ? '' : key)),
         amount: Number(inv.amount ?? 0) || 0,
         frequency: String(inv.frequency || 'Monthly'),
-        expectedReturn: Number(inv.expectedReturn ?? inv.expectedReturnRate ?? 0) || 0,
+        expectedReturn: resolveReturn(inst, Number(inv.expectedReturn ?? inv.expectedReturnRate ?? 0)),
       });
     }
   }
   if (items.length === 0) {
     const sip = Number(obj.monthlySIP ?? 0) || 0;
-    const ret = Number(obj.expectedReturn ?? 12) || 0;
     if (sip > 0) {
-      items.push({ id: uid(), instrument: 'SIP (Mutual Funds)', amount: sip, frequency: 'Monthly', expectedReturn: ret });
+      items.push({ id: uid(), instrument: 'SIP (Mutual Funds)', name: '', amount: sip, frequency: 'Monthly', expectedReturn: 12 });
     }
   }
   return items;
@@ -449,7 +470,13 @@ function investmentsToObject(investments: InvestmentItem[]): Record<string, unkn
   const obj: Record<string, unknown> = {};
   investments.forEach((inv) => {
     if (inv.instrument.trim() && inv.amount > 0) {
-      obj[inv.instrument.trim()] = {
+      const key = inv.name.trim() || inv.instrument.trim();
+      let finalKey = key;
+      let counter = 2;
+      while (obj[finalKey]) { finalKey = `${key} (${counter})`; counter++; }
+      obj[finalKey] = {
+        instrument: inv.instrument.trim(),
+        name: inv.name.trim(),
         amount: inv.amount,
         frequency: inv.frequency.toLowerCase(),
         expectedReturn: inv.expectedReturn,
@@ -483,6 +510,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState('personal');
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchProfile()
@@ -542,6 +570,8 @@ export default function ProfilePage() {
       const saved = profile ? await updateProfile(payload) : await createProfile(payload);
       setProfile(saved);
       setSuccess('Saved successfully! Your dashboard will now show updated numbers. 🎉');
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccess(null), 5000);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Save failed';
       setError(msg);
@@ -620,14 +650,20 @@ export default function ProfilePage() {
   function addInvestment() {
     setData((prev) => ({
       ...prev,
-      investments: [...prev.investments, { id: uid(), instrument: '', amount: 0, frequency: 'Monthly', expectedReturn: 12 }],
+      investments: [...prev.investments, { id: uid(), instrument: '', name: '', amount: 0, frequency: 'Monthly', expectedReturn: 0 }],
     }));
   }
   function removeInvestment(id: string) {
     setData((prev) => ({ ...prev, investments: prev.investments.filter((inv) => inv.id !== id) }));
   }
   function updateInvestmentInstrument(id: string, instrument: string) {
-    setData((prev) => ({ ...prev, investments: prev.investments.map((inv) => (inv.id === id ? { ...inv, instrument } : inv)) }));
+    const autoReturn = INSTRUMENT_DEFAULT_RETURN[instrument] ?? 10;
+    setData((prev) => ({
+      ...prev,
+      investments: prev.investments.map((inv) =>
+        inv.id === id ? { ...inv, instrument, expectedReturn: autoReturn } : inv,
+      ),
+    }));
   }
   function updateInvestmentField(id: string, field: string, value: number | string) {
     setData((prev) => ({
@@ -681,7 +717,6 @@ export default function ProfilePage() {
   const usedInsuranceTypes = data.insurance.map((p) => p.policyType).filter(Boolean);
   const totalPremiumMonthly = data.insurance.reduce((sum, p) => sum + monthlyEquivalent(p.premium, p.premiumFrequency), 0);
   const totalCover = data.insurance.reduce((sum, p) => sum + p.coverAmount, 0);
-  const usedInvestmentInstruments = data.investments.map((inv) => inv.instrument).filter(Boolean);
   const totalInvestmentMonthly = data.investments.reduce((sum, inv) => sum + monthlyEquivalent(inv.amount, inv.frequency), 0);
 
   /* ══════════════════════════════════════════════════════════
@@ -717,7 +752,7 @@ export default function ProfilePage() {
       {/* Section tabs */}
       <div className="flex flex-wrap gap-2">
         {sections.map((s) => (
-          <button key={s.id} onClick={() => setActiveSection(s.id)}
+          <button key={s.id} onClick={() => { setActiveSection(s.id); setSuccess(null); setError(null); }}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               activeSection === s.id
                 ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 border-2 border-indigo-300 dark:border-indigo-700 shadow-sm'
@@ -917,7 +952,6 @@ export default function ProfilePage() {
                 <InvestmentCard
                   key={inv.id}
                   investment={inv}
-                  usedInstruments={usedInvestmentInstruments}
                   onInstrumentChange={(t) => updateInvestmentInstrument(inv.id, t)}
                   onFieldChange={(f, v) => updateInvestmentField(inv.id, f, v)}
                   onRemove={() => removeInvestment(inv.id)}
@@ -1217,11 +1251,10 @@ function InsuranceCard({ policy, usedTypes, onTypeChange, onFieldChange, onRemov
 }
 
 /* ══════════════════════════════════════════════════════════════
-   InvestmentCard — autocomplete instrument + amount/frequency/return + delete
+   InvestmentCard — instrument + fund name + amount/frequency + delete
    ══════════════════════════════════════════════════════════════ */
-function InvestmentCard({ investment, usedInstruments, onInstrumentChange, onFieldChange, onRemove }: {
+function InvestmentCard({ investment, onInstrumentChange, onFieldChange, onRemove }: {
   investment: InvestmentItem;
-  usedInstruments: string[];
   onInstrumentChange: (t: string) => void;
   onFieldChange: (field: string, value: number | string) => void;
   onRemove: () => void;
@@ -1233,7 +1266,7 @@ function InvestmentCard({ investment, usedInstruments, onInstrumentChange, onFie
   const customInstruments = loadCustom('fa-custom-investment-instruments');
   const allSuggestions = [...INVESTMENT_SUGGESTIONS, ...customInstruments.filter((c) => !INVESTMENT_SUGGESTIONS.includes(c))];
   const filtered = allSuggestions.filter(
-    (s) => s.toLowerCase().includes(search.toLowerCase()) && (s === investment.instrument || !usedInstruments.includes(s)),
+    (s) => s.toLowerCase().includes(search.toLowerCase()),
   );
 
   useEffect(() => {
@@ -1259,50 +1292,65 @@ function InvestmentCard({ investment, usedInstruments, onInstrumentChange, onFie
                    text-xs font-bold flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors"
         title="Remove this investment">✕</button>
 
-      <div className="relative mb-4 max-w-sm" ref={ref}>
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className="text-lg">{emoji}</span>
-          <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Investment Instrument</label>
-          {tooltip && <InfoTooltip text={tooltip}><span /></InfoTooltip>}
+      {/* Instrument type + fund name row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <div className="relative" ref={ref}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-lg">{emoji}</span>
+            <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Instrument Type</label>
+            {tooltip && <InfoTooltip text={tooltip}><span /></InfoTooltip>}
+          </div>
+          <input type="text" value={search}
+            onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (filtered.length > 0 && search) selectInstrument(filtered[0]);
+                else { onInstrumentChange(search); setOpen(false); }
+              }
+            }}
+            placeholder="Type to search..."
+            className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                       bg-white dark:bg-gray-800 dark:text-gray-100
+                       focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
+          {open && filtered.length > 0 && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+                            border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
+                            max-h-48 overflow-y-auto animate-fade-in">
+              {filtered.map((s) => (
+                <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectInstrument(s)}
+                  className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30
+                             text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors
+                             first:rounded-t-xl last:rounded-b-xl">
+                  <span>{INVESTMENT_EMOJI[s] || '📈'}</span><span>{s}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {open && filtered.length === 0 && search.trim() && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+                            border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
+                            px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 animate-fade-in">
+              Press <strong>Enter</strong> to use "<em>{search}</em>" as a new instrument
+            </div>
+          )}
         </div>
-        <input type="text" value={search}
-          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (filtered.length > 0 && search) selectInstrument(filtered[0]);
-              else { onInstrumentChange(search); setOpen(false); }
-            }
-          }}
-          placeholder="Type to search investment type..."
-          className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
-                     bg-white dark:bg-gray-800 dark:text-gray-100
-                     focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
-        {open && filtered.length > 0 && (
-          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
-                          border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
-                          max-h-48 overflow-y-auto animate-fade-in">
-            {filtered.map((s) => (
-              <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectInstrument(s)}
-                className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30
-                           text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors
-                           first:rounded-t-xl last:rounded-b-xl">
-                <span>{INVESTMENT_EMOJI[s] || '📈'}</span><span>{s}</span>
-              </button>
-            ))}
+        <div>
+          <div className="flex items-center gap-1 mb-1.5">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Fund / Scheme Name</label>
+            <InfoTooltip text="Optional: Name of the specific fund, scheme, or stock. E.g. 'HDFC Flexi Cap Fund', 'Axis Small Cap'."><span /></InfoTooltip>
           </div>
-        )}
-        {open && filtered.length === 0 && search.trim() && (
-          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
-                          border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
-                          px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 animate-fade-in">
-            Press <strong>Enter</strong> to use "<em>{search}</em>" as a new instrument
-          </div>
-        )}
+          <input type="text" value={investment.name} onChange={(e) => onFieldChange('name', e.target.value)}
+            placeholder="e.g. HDFC Flexi Cap Fund"
+            className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                       bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100
+                       focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Amount + frequency row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <NumberField label="Investment Amount" value={investment.amount} prefix="₹"
           onChange={(v) => onFieldChange('amount', v)}
           tooltip="How much you invest per cycle. Enter the amount per frequency selected." />
@@ -1318,10 +1366,12 @@ function InvestmentCard({ investment, usedInstruments, onInstrumentChange, onFie
             {INVESTMENT_FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
         </div>
-        <NumberField label="Expected Return (%)" value={investment.expectedReturn}
-          onChange={(v) => onFieldChange('expectedReturn', v)}
-          tooltip="Expected annual return? MF/Stocks: 10-12%. PPF: 7.1%. FD/RD: 6-7%. NPS: 8-10%." />
       </div>
+      {investment.instrument && (
+        <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+          📈 Assumed return: ~{INSTRUMENT_DEFAULT_RETURN[investment.instrument] ?? 10}% p.a.
+        </p>
+      )}
     </div>
   );
 }
