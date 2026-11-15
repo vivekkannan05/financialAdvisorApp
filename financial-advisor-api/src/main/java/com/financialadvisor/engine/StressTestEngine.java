@@ -45,8 +45,8 @@ public class StressTestEngine {
         EmergencyCoverageResult afterEc = healthEngine.calculateEmergencyCoverage(stressedProfile);
         List<GoalAssessment> afterGoals = goalEngine.assessGoals(stressedProfile);
 
-        BigDecimal portfolioBefore = beforeNw.liquidAssets();
-        BigDecimal portfolioAfter = afterNw.liquidAssets();
+        BigDecimal portfolioBefore = beforeNw.accessibleAssets();
+        BigDecimal portfolioAfter = afterNw.accessibleAssets();
         BigDecimal impact = portfolioAfter.subtract(portfolioBefore);
 
         List<StressTestResult.GoalImpact> goalImpacts = new ArrayList<>();

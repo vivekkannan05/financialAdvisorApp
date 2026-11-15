@@ -70,13 +70,15 @@ public class FinancialAdvisoryTools {
         BigDecimal investable = healthEngine.calculateInvestableCapital(profileData);
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("netWorth", Map.of(
-                "totalAssets", netWorth.totalAssets().toPlainString(),
-                "liquidAssets", netWorth.liquidAssets().toPlainString(),
-                "illiquidAssets", netWorth.illiquidAssets().toPlainString(),
-                "totalLiabilities", netWorth.totalLiabilities().toPlainString(),
-                "netWorth", netWorth.netWorth().toPlainString()
-        ));
+        Map<String, String> nwMap = new LinkedHashMap<>();
+        nwMap.put("totalAssets", netWorth.totalAssets().toPlainString());
+        nwMap.put("liquidAssets", netWorth.liquidAssets().toPlainString());
+        nwMap.put("marketLinkedAssets", netWorth.marketLinkedAssets().toPlainString());
+        nwMap.put("restrictedAssets", netWorth.restrictedAssets().toPlainString());
+        nwMap.put("illiquidAssets", netWorth.illiquidAssets().toPlainString());
+        nwMap.put("totalLiabilities", netWorth.totalLiabilities().toPlainString());
+        nwMap.put("netWorth", netWorth.netWorth().toPlainString());
+        result.put("netWorth", nwMap);
         result.put("cashFlow", Map.of(
                 "grossMonthlyIncome", cashFlow.grossMonthlyIncome().toPlainString(),
                 "monthlyExpenses", cashFlow.monthlyExpenses().toPlainString(),
@@ -156,12 +158,13 @@ public class FinancialAdvisoryTools {
                 .filter(fp -> fp.compareTo(new BigDecimal("100")) < 0)
                 .findFirst().map(_ -> new BigDecimal("0.12")).orElse(null);
 
+        BigDecimal accessible = nw.accessibleAssets();
         RiskContext ctx = new RiskContext(
                 tolerance, cf.monthlySurplus(), nw.totalLiabilities(),
-                nw.liquidAssets(), cf.grossMonthlyIncome(),
+                accessible, cf.grossMonthlyIncome(),
                 ec.coverageMonths(), requiredReturn,
                 shortestHorizon, age != null ? age : 35,
-                retirementAge, nw.liquidAssets(), nw.totalLiabilities()
+                retirementAge, accessible, nw.totalLiabilities()
         );
 
         CompositeRiskResult risk = riskAssessor.assess(ctx);

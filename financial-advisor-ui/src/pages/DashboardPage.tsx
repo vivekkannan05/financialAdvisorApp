@@ -43,7 +43,7 @@ function calculateHealthScore(s: DashboardResponse['summary']): number {
   else score -= 10;
   if (s.goalsOnTrack > 0) score += 5 * Math.min(s.goalsOnTrack, 3);
   if (s.goalsAtRisk > 0) score -= 5 * Math.min(s.goalsAtRisk, 3);
-  if (s.totalLiabilities > s.liquidAssets) score -= 10;
+  if (s.totalLiabilities > s.liquidAssets + (s.marketLinkedAssets ?? 0)) score -= 10;
   return Math.max(0, Math.min(100, score));
 }
 
@@ -155,19 +155,25 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Quick numbers bar */}
+      {/* Quick numbers bar — 4-tier liquidity + debt + risk */}
       <div className="bg-white dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
         <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-          📊 Quick Numbers
-          <InfoTooltip text="A snapshot of your money in different buckets. Liquid means easy to access. Illiquid means locked or hard to sell quickly (like gold, property).">
+          📊 Where Your Money Sits
+          <InfoTooltip text="Your assets split into 4 tiers based on how quickly you can access them. Liquid = instant (savings, FD). Market-linked = sell within days (MF, stocks). Restricted = lock-in periods (EPF, NPS, PPF). Illiquid = hard to sell (gold, land).">
             <span />
           </InfoTooltip>
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <QuickStat label="💧 Easy-to-access money" value={formatInr(s.liquidAssets)} />
-          <QuickStat label="🔒 Locked money" value={formatInr(s.illiquidAssets)} />
-          <QuickStat label="💳 Total loans" value={formatInr(s.totalLiabilities)} negative={s.totalLiabilities > 0} />
-          <QuickStat label="⚖️ Risk appetite" value={s.riskLevel.replace('_', ' ')} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
+          <QuickStat label="💧 Liquid" value={formatInr(s.liquidAssets)}
+            tooltip="Savings, FD, Cash — instantly available" />
+          <QuickStat label="📈 Market-Linked" value={formatInr(s.marketLinkedAssets ?? 0)}
+            tooltip="Mutual Funds, Stocks, SGBs — sell at market price within days" />
+          <QuickStat label="🔒 Restricted" value={formatInr(s.restrictedAssets ?? 0)}
+            tooltip="EPF, NPS, PPF — has lock-in periods, withdrawal rules apply" />
+          <QuickStat label="🏠 Illiquid" value={formatInr(s.illiquidAssets)}
+            tooltip="Gold, Land, Property — hard to convert quickly" />
+          <QuickStat label="💳 Total Loans" value={formatInr(s.totalLiabilities)} negative={s.totalLiabilities > 0} />
+          <QuickStat label="⚖️ Risk Appetite" value={s.riskLevel.replace('_', ' ')} />
         </div>
       </div>
 
@@ -227,10 +233,15 @@ function SummaryCard({
   );
 }
 
-function QuickStat({ label, value, negative }: { label: string; value: string; negative?: boolean }) {
+function QuickStat({ label, value, negative, tooltip }: { label: string; value: string; negative?: boolean; tooltip?: string }) {
   return (
     <div className="text-center p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50">
-      <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+      <div className="flex items-center justify-center gap-1 mb-1">
+        <p className="text-[11px] text-gray-500 dark:text-gray-400">{label}</p>
+        {tooltip && (
+          <InfoTooltip text={tooltip}><span /></InfoTooltip>
+        )}
+      </div>
       <p className={`text-sm font-bold ${negative ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}`}>{value}</p>
     </div>
   );

@@ -40,6 +40,8 @@ export interface DimensionStatus {
 export interface FinancialSummary {
   netWorth: number;
   liquidAssets: number;
+  marketLinkedAssets: number;
+  restrictedAssets: number;
   illiquidAssets: number;
   totalLiabilities: number;
   monthlySurplus: number;

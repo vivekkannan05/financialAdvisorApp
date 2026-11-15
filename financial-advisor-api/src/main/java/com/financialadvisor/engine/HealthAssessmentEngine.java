@@ -22,6 +22,23 @@ import static com.financialadvisor.engine.ProfileDataExtractor.*;
 @Service
 public class HealthAssessmentEngine {
 
+    /* ── 4-tier liquidity classification keywords ─────────────────────── */
+
+    /** Tier 1 — instantly accessible (savings, FD, cash, RD, post office). */
+    private static final Set<String> LIQUID_KEYWORDS = Set.of(
+            "saving", "fixed deposit", "fd", "cash", "recurring deposit", "rd", "post office");
+
+    /** Tier 2 — redeemable at market value within days (MF, stocks, bonds, crypto). */
+    private static final Set<String> MARKET_LINKED_KEYWORDS = Set.of(
+            "mutual fund", "mutualfund", "stock", "share", "sovereign gold",
+            "corporate bond", "digital gold", "ulip", "cryptocurrency", "crypto",
+            "sip", "equity");
+
+    /** Tier 3 — lock-in / withdrawal restrictions (EPF, NPS, PPF). */
+    private static final Set<String> RESTRICTED_KEYWORDS = Set.of(
+            "epf", "nps", "ppf", "provident fund");
+
+    /** Tier 4 — hard to convert quickly (physical gold, land, property). */
     private static final Set<String> ILLIQUID_ASSET_TYPES = Set.of(
             "land", "gold", "apartment", "property", "real estate", "real_estate", "realestate");
 
@@ -33,13 +50,15 @@ public class HealthAssessmentEngine {
     }
 
     /**
-     * Calculates net worth with liquid/illiquid breakdown (FR-2.1).
+     * Calculates net worth with 4-tier liquidity breakdown (FR-2.1).
      */
     public NetWorthResult calculateNetWorth(Map<String, Object> profileData) {
         Map<String, Object> assets = getSection(profileData, "assets");
         Map<String, Object> liabilities = getSection(profileData, "liabilities");
 
         BigDecimal liquidTotal = BigDecimal.ZERO;
+        BigDecimal marketLinkedTotal = BigDecimal.ZERO;
+        BigDecimal restrictedTotal = BigDecimal.ZERO;
         BigDecimal illiquidTotal = BigDecimal.ZERO;
         Map<String, BigDecimal> assetBreakdown = new LinkedHashMap<>();
 
@@ -50,10 +69,11 @@ public class HealthAssessmentEngine {
 
             assetBreakdown.put(assetName, FinancialMathUtil.roundInr(value));
 
-            if (isIlliquid(assetName, entry.getValue())) {
-                illiquidTotal = illiquidTotal.add(value);
-            } else {
-                liquidTotal = liquidTotal.add(value);
+            switch (classifyAssetTier(assetName, entry.getValue())) {
+                case LIQUID -> liquidTotal = liquidTotal.add(value);
+                case MARKET_LINKED -> marketLinkedTotal = marketLinkedTotal.add(value);
+                case RESTRICTED -> restrictedTotal = restrictedTotal.add(value);
+                case ILLIQUID -> illiquidTotal = illiquidTotal.add(value);
             }
         }
 
@@ -69,12 +89,14 @@ public class HealthAssessmentEngine {
             liabilityTotal = liabilityTotal.add(value);
         }
 
-        BigDecimal totalAssets = liquidTotal.add(illiquidTotal);
+        BigDecimal totalAssets = liquidTotal.add(marketLinkedTotal).add(restrictedTotal).add(illiquidTotal);
         BigDecimal netWorth = totalAssets.subtract(liabilityTotal);
 
         return new NetWorthResult(
                 FinancialMathUtil.roundInr(totalAssets),
                 FinancialMathUtil.roundInr(liquidTotal),
+                FinancialMathUtil.roundInr(marketLinkedTotal),
+                FinancialMathUtil.roundInr(restrictedTotal),
                 FinancialMathUtil.roundInr(illiquidTotal),
                 FinancialMathUtil.roundInr(liabilityTotal),
                 FinancialMathUtil.roundInr(netWorth),
@@ -231,18 +253,38 @@ public class HealthAssessmentEngine {
         return FinancialMathUtil.toBigDecimal(liability);
     }
 
+    /* ── 4-tier asset classification ──────────────────────────────────── */
+
+    enum AssetTier { LIQUID, MARKET_LINKED, RESTRICTED, ILLIQUID }
+
     @SuppressWarnings("unchecked")
-    private boolean isIlliquid(String assetName, Object asset) {
-        String lower = assetName.toLowerCase().replaceAll("[\\s_/\\-]+", " ").trim();
-        if (ILLIQUID_ASSET_TYPES.contains(lower)) return true;
-        for (String illiquidType : ILLIQUID_ASSET_TYPES) {
-            if (lower.contains(illiquidType)) return true;
-        }
+    AssetTier classifyAssetTier(String assetName, Object asset) {
+        String lower = assetName.toLowerCase().replaceAll("[\\s_/\\u2014\\-]+", " ").trim();
+
+        if (matchesAny(lower, RESTRICTED_KEYWORDS)) return AssetTier.RESTRICTED;
+        if (matchesAny(lower, MARKET_LINKED_KEYWORDS)) return AssetTier.MARKET_LINKED;
+
+        if (matchesAny(lower, ILLIQUID_ASSET_TYPES)) return AssetTier.ILLIQUID;
         if (asset instanceof Map<?, ?> map) {
-            return Boolean.FALSE.equals(((Map<String, Object>) map).getOrDefault("liquid", true))
-                    || Boolean.TRUE.equals(((Map<String, Object>) map).get("liquid") instanceof Boolean b && !b);
+            Object liquidFlag = ((Map<String, Object>) map).get("liquid");
+            if (Boolean.FALSE.equals(liquidFlag)) return AssetTier.ILLIQUID;
+        }
+
+        return AssetTier.LIQUID;
+    }
+
+    private static boolean matchesAny(String normalised, Set<String> keywords) {
+        for (String kw : keywords) {
+            if (normalised.contains(kw)) return true;
         }
         return false;
+    }
+
+    /** Backward-compatible check used by {@link #calculateInvestableCapital}. */
+    @SuppressWarnings("unchecked")
+    private boolean isIlliquid(String assetName, Object asset) {
+        AssetTier tier = classifyAssetTier(assetName, asset);
+        return tier == AssetTier.ILLIQUID;
     }
 
     @SuppressWarnings("unchecked")

@@ -36,41 +36,53 @@ class HealthAssessmentEngineTest {
     }
 
     @Test
-    @DisplayName("UT-01: Net worth separates liquid and illiquid assets")
-    void calculateNetWorth_separatesLiquidAndIlliquid() {
+    @DisplayName("UT-01: Net worth separates 4 liquidity tiers")
+    void calculateNetWorth_separatesFourTiers() {
         Map<String, Object> profile = buildBaselineProfile();
         NetWorthResult result = engine.calculateNetWorth(profile);
 
-        assertTrue(result.liquidAssets().compareTo(BigDecimal.ZERO) > 0);
-        assertTrue(result.illiquidAssets().compareTo(BigDecimal.ZERO) > 0);
+        assertTrue(result.liquidAssets().compareTo(BigDecimal.ZERO) > 0, "Liquid should be > 0");
+        assertTrue(result.marketLinkedAssets().compareTo(BigDecimal.ZERO) > 0, "Market-linked should be > 0");
+        assertTrue(result.restrictedAssets().compareTo(BigDecimal.ZERO) > 0, "Restricted should be > 0");
+        assertTrue(result.illiquidAssets().compareTo(BigDecimal.ZERO) > 0, "Illiquid should be > 0");
         assertEquals(0, result.totalAssets().compareTo(
-                result.liquidAssets().add(result.illiquidAssets())));
+                result.liquidAssets().add(result.marketLinkedAssets())
+                        .add(result.restrictedAssets()).add(result.illiquidAssets())));
         assertEquals(0, result.netWorth().compareTo(
                 result.totalAssets().subtract(result.totalLiabilities())));
     }
 
     @Test
-    @DisplayName("UT-01: Net worth includes FD, EPF, MFs, stocks as liquid")
-    void calculateNetWorth_fdEpfMfStocksAreLiquid() {
+    @DisplayName("UT-01: FD is liquid, MFs+Stocks are market-linked, EPF is restricted, Land is illiquid")
+    void calculateNetWorth_4tierClassification() {
         Map<String, Object> profile = buildBaselineProfile();
         NetWorthResult result = engine.calculateNetWorth(profile);
 
-        BigDecimal expectedLiquid = new BigDecimal("900000")
-                .add(new BigDecimal("500000"))
-                .add(new BigDecimal("344698"))
-                .add(new BigDecimal("159611"));
+        BigDecimal expectedLiquid = new BigDecimal("900000").setScale(2, RoundingMode.HALF_UP);
+        BigDecimal expectedMarketLinked = new BigDecimal("344698")
+                .add(new BigDecimal("159611")).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal expectedRestricted = new BigDecimal("500000").setScale(2, RoundingMode.HALF_UP);
+        BigDecimal expectedIlliquid = new BigDecimal("500000").setScale(2, RoundingMode.HALF_UP);
 
-        assertEquals(0, result.liquidAssets().compareTo(expectedLiquid.setScale(2, RoundingMode.HALF_UP)));
+        assertEquals(0, result.liquidAssets().compareTo(expectedLiquid),
+                "Liquid = emergencyFD (₹9L)");
+        assertEquals(0, result.marketLinkedAssets().compareTo(expectedMarketLinked),
+                "Market-linked = mutualFunds + indianStocks");
+        assertEquals(0, result.restrictedAssets().compareTo(expectedRestricted),
+                "Restricted = epf (₹5L)");
+        assertEquals(0, result.illiquidAssets().compareTo(expectedIlliquid),
+                "Illiquid = land (₹5L)");
     }
 
     @Test
-    @DisplayName("UT-01: Net worth includes land as illiquid")
-    void calculateNetWorth_landIsIlliquid() {
+    @DisplayName("UT-01: accessibleAssets = liquid + marketLinked")
+    void calculateNetWorth_accessibleAssets() {
         Map<String, Object> profile = buildBaselineProfile();
         NetWorthResult result = engine.calculateNetWorth(profile);
 
-        assertTrue(result.illiquidAssets().compareTo(new BigDecimal("500000")) >= 0,
-                "Illiquid should include land value");
+        assertEquals(0, result.accessibleAssets().compareTo(
+                result.liquidAssets().add(result.marketLinkedAssets())),
+                "accessibleAssets should be liquid + market-linked");
     }
 
     @Test

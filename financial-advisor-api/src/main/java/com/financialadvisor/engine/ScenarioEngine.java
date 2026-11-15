@@ -89,7 +89,7 @@ public class ScenarioEngine {
                 sipGoalFunding,
                 sipCorpus,
                 BigDecimal.ZERO,
-                currentNw.liquidAssets().add(sipCorpus),
+                currentNw.accessibleAssets().add(sipCorpus),
                 sipAdvantages, sipDisadvantages
         );
 
@@ -98,7 +98,7 @@ public class ScenarioEngine {
                 prepayGoalFunding,
                 interestSaved.negate(),
                 interestSaved,
-                currentNw.liquidAssets().subtract(prepaymentAmount).add(interestSaved),
+                currentNw.accessibleAssets().subtract(prepaymentAmount).add(interestSaved),
                 prepayAdvantages, prepayDisadvantages
         );
 
@@ -139,11 +139,11 @@ public class ScenarioEngine {
 
         var scenarioA = new ScenarioComparison.ScenarioOutcome(
                 nameA, fundingA, BigDecimal.ZERO, BigDecimal.ZERO,
-                baseNw.liquidAssets(), List.of(), List.of()
+                baseNw.accessibleAssets(), List.of(), List.of()
         );
         var scenarioB = new ScenarioComparison.ScenarioOutcome(
                 nameB, fundingB, BigDecimal.ZERO, BigDecimal.ZERO,
-                baseNw.liquidAssets(), List.of(), List.of()
+                baseNw.accessibleAssets(), List.of(), List.of()
         );
 
         return new ScenarioComparison(nameA, nameB, scenarioA, scenarioB,

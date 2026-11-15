@@ -35,7 +35,7 @@ Build a private, India-focused holistic financial adviser delivered as a **stand
 
 | ID | Requirement | Source |
 |----|-------------|--------|
-| FR-2.1 | The system SHALL calculate net worth as total assets minus total liabilities, with a clear breakdown of liquid assets (FDs, MFs, stocks, EPF) versus illiquid assets (land, gold, property). | [Source: Calculation §7] |
+| FR-2.1 | The system SHALL calculate net worth as total assets minus total liabilities, using a **4-tier liquidity classification**: (1) **Liquid** — Savings, FD, Cash, RD, Post Office (instantly accessible), (2) **Market-Linked** — Mutual Funds, Stocks, SGBs, Corporate Bonds, Digital Gold, ULIP, Crypto (redeemable at market value within days), (3) **Restricted** — EPF, NPS, PPF (lock-in periods / withdrawal restrictions), (4) **Illiquid** — Gold, Land, Real Estate, Property (hard to convert quickly). The dashboard SHALL display all 4 tiers. Risk capacity calculations SHALL use *accessible assets* (Liquid + Market-Linked) for debt-to-asset ratios. | [Source: Calculation §7, DL-liquidity-tiers] |
 | FR-2.2 | The system SHALL calculate cash-flow health as: gross income minus (living expenses + EMIs + insurance premiums + planned investment commitments). The result is the available monthly surplus. | [Source: Calculation §7, Capability §3] |
 | FR-2.3 | The system SHALL calculate emergency coverage as: emergency-designated assets ÷ mandatory monthly expenditure. This ratio SHALL be recalculated dynamically whenever mandatory outflows change (e.g., when a home loan EMI begins). | [Source: Calculation §7, DL-014] |
 | FR-2.4 | The system SHALL detect concentration risk when any single asset class, sector, or instrument exceeds a configurable threshold of total portfolio value. | [Source: Capability §3] |
@@ -282,7 +282,12 @@ The profile uses a flexible schema. Core fields are documented below; additional
 - Investment keys use the fund/scheme name (e.g., `"Bandhan Small Cap Fund"`) with `(2)`, `(3)` suffixes for duplicates.
 - `premiumFrequency` and `frequency` use **Capitalized** convention: `"Monthly"`, `"Quarterly"`, `"Half-Yearly"`, `"Yearly"`. Backend comparisons are case-insensitive (`equalsIgnoreCase`).
 - `expectedReturn` on investments is auto-assigned based on instrument type (e.g., MF → 12%, PPF → 7.1%, NPS → 9%). Users do not set this directly.
-- Illiquidity is determined by substring matching on asset type (contains `"gold"`, `"land"`, `"property"`, `"real estate"`, `"apartment"`), not by a `liquid` flag.
+- Asset classification uses a **4-tier model** with keyword matching on the normalized asset name:
+  - **Restricted** (checked first): `"epf"`, `"nps"`, `"ppf"`, `"provident fund"`
+  - **Market-Linked**: `"mutual fund"`, `"mutualfund"`, `"stock"`, `"share"`, `"sovereign gold"`, `"corporate bond"`, `"digital gold"`, `"ulip"`, `"cryptocurrency"`, `"crypto"`, `"sip"`, `"equity"`
+  - **Illiquid**: `"land"`, `"gold"`, `"apartment"`, `"property"`, `"real estate"` (also triggers on `liquid: false` flag)
+  - **Liquid** (default): everything else (Savings, FD, Cash, RD, Post Office)
+- `accessibleAssets()` = Liquid + Market-Linked — used for risk capacity debt-to-asset ratio and stress test portfolio values.
 - Emergency fund protection (FR-6.4) is enforced by `goalTag` containing `"emergency"` — assets tagged to Emergency Fund are excluded from investable capital.
 - Additional fields added by the user are preserved in the flexible schema.
 
@@ -311,20 +316,32 @@ All paths use the `/api/v1/` prefix per NFR-5.4.
 
 ```json
 {
-  "asOfDate": "2026-11-14",
-  "dimensions": {
-    "liquidity": { "status": "healthy|warning|critical", "value": "...", "trend": "up|flat|down", "detail": "..." },
-    "insurance": { "status": "...", "coverageRatio": "...", "gaps": [] },
-    "debtExposure": { "status": "...", "debtToIncomeRatio": "...", "detail": "..." },
-    "retirementTrajectory": { "status": "...", "fundedPercent": "...", "shortfall": "..." },
-    "educationTrajectory": { "status": "...", "fundedPercent": "...", "shortfall": "..." },
-    "portfolioRisk": { "status": "...", "concentrationFlags": [], "detail": "..." },
-    "incomeConcentration": { "status": "...", "singleSourceRisk": true, "detail": "..." },
-    "emergencyCoverage": { "status": "...", "monthsCovered": "...", "threshold": "..." },
-    "housingCommitment": { "status": "...", "emiToIncomeRatio": "...", "detail": "..." },
-    "warnings": [{ "severity": "high|medium|low", "message": "...", "action": "..." }]
+  "summary": {
+    "netWorth": 0,
+    "liquidAssets": 0,
+    "marketLinkedAssets": 0,
+    "restrictedAssets": 0,
+    "illiquidAssets": 0,
+    "totalLiabilities": 0,
+    "monthlySurplus": 0,
+    "emergencyCoverageMonths": 0,
+    "riskLevel": "VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH",
+    "goalCount": 0,
+    "goalsOnTrack": 0,
+    "goalsAtRisk": 0
   },
-  "overallScore": null
+  "dimensions": [
+    { "index": 1, "name": "Liquidity Status", "status": "healthy|warning", "description": "Liquid: ₹X | Market-linked: ₹Y | Restricted: ₹Z | Illiquid: ₹W", "actions": [] },
+    { "index": 2, "name": "Insurance Status", "status": "...", "description": "...", "actions": [] },
+    { "index": 3, "name": "Debt Exposure", "status": "...", "description": "...", "actions": [] },
+    { "index": 4, "name": "Retirement Trajectory", "status": "...", "description": "...", "actions": [] },
+    { "index": 5, "name": "Education Trajectory", "status": "...", "description": "...", "actions": [] },
+    { "index": 6, "name": "Portfolio Risk", "status": "...", "description": "...", "actions": [] },
+    { "index": 7, "name": "Income Concentration", "status": "...", "description": "...", "actions": [] },
+    { "index": 8, "name": "Emergency Coverage", "status": "...", "description": "...", "actions": [] },
+    { "index": 9, "name": "Housing Commitment", "status": "...", "description": "...", "actions": [] },
+    { "index": 10, "name": "Key Warnings & Actions", "status": "...", "description": "...", "actions": [] }
+  ]
 }
 ```
 
@@ -418,7 +435,7 @@ The application SHALL be a single Spring Boot monolith. Separate microservices f
 
 | ID | Criteria |
 |----|----------|
-| AC-2.1 | **Given** the user's profile with assets and liabilities, **When** net worth is calculated, **Then** the result separates liquid and illiquid assets, and the total equals assets minus liabilities. |
+| AC-2.1 | **Given** the user's profile with assets and liabilities, **When** net worth is calculated, **Then** the result classifies assets into 4 tiers (Liquid, Market-Linked, Restricted, Illiquid), and total assets = sum of all 4 tiers, and net worth = total assets minus total liabilities. |
 | AC-2.2 | **Given** the user's income and expense data, **When** cash-flow health is calculated, **Then** the monthly surplus equals income minus (expenses + EMIs + insurance + investments). |
 | AC-2.3 | **Given** emergency assets of ₹9,00,000 and monthly expenses of ₹88,000, **When** emergency coverage is calculated, **Then** the result is approximately 10.2 months. |
 | AC-2.4 | **Given** a future home loan EMI starts, **When** emergency coverage is recalculated, **Then** the coverage ratio decreases to reflect the higher mandatory outflow. |
@@ -476,7 +493,7 @@ The application SHALL be a single Spring Boot monolith. Separate microservices f
 
 | ID | Test | Validates | FR/NFR |
 |----|------|-----------|--------|
-| UT-01 | Net worth calculation with mixed liquid/illiquid assets | Correct sum and breakdown | FR-2.1 |
+| UT-01 | Net worth calculation with 4-tier liquidity classification (Liquid/Market-Linked/Restricted/Illiquid) | Correct sum per tier and total breakdown | FR-2.1 |
 | UT-02 | Cash-flow surplus calculation | Income - expenses - EMIs - insurance - investments | FR-2.2 |
 | UT-03 | Emergency coverage ratio | Emergency assets ÷ monthly mandatory expenses | FR-2.3 |
 | UT-04 | Emergency coverage recalculation after EMI starts | Ratio decreases with higher outflows | FR-2.3, DL-014 |
@@ -690,6 +707,11 @@ All 20 finalized decisions (DL-001 through DL-020) from the Discovery Decision L
 | 2026-11-15 | §4.1 Frequency | `premiumFrequency: "monthly"` (lowercase) | Capitalized convention: `"Monthly"`, `"Quarterly"`, `"Half-Yearly"`, `"Yearly"`; backend uses equalsIgnoreCase | Consistent casing across frontend and backend | Agent |
 | 2026-11-15 | AC-3.3 | `tagged as "emergency" with locked=true` | `goalTag` containing "emergency" (case-insensitive substring) | Emergency detection uses flexible matching, no `locked` flag | Agent |
 | 2026-11-15 | Spec version | 2.0 | 2.1 | Profile schema aligned with V1 implementation | Agent |
+| 2026-11-15 | FR-2.1 | Binary liquid/illiquid classification (FD+MF+Stocks+EPF = liquid, Gold+Land = illiquid) | 4-tier model: Liquid (Savings/FD/Cash), Market-Linked (MF/Stocks/SGB/Bonds), Restricted (EPF/NPS/PPF), Illiquid (Gold/Land/Property). Risk capacity uses accessibleAssets (Liquid+Market-Linked). | User decision: MFs/EPF should not count as instantly liquid | Agent |
+| 2026-11-15 | AC-2.1 | Net worth separates liquid and illiquid | Net worth classifies into 4 tiers; total = sum of all 4 | 4-tier liquidity model | Agent |
+| 2026-11-15 | UT-01 | Test: mixed liquid/illiquid | Test: 4-tier classification (FD=Liquid, MF+Stocks=Market-Linked, EPF=Restricted, Land=Illiquid) | 4-tier model validation | Agent |
+| 2026-11-15 | §4.1 Notes | Illiquidity by asset type name | 4-tier keyword matching: Restricted→Market-Linked→Illiquid→Liquid (default). `accessibleAssets()` = Liquid + Market-Linked | 4-tier classification rules | Agent |
+| 2026-11-15 | Spec version | 2.1 | 2.2 | 4-tier liquidity model implemented | Agent |
 
 ---
 

@@ -74,7 +74,9 @@ public class DashboardController {
         int goalsAtRisk = goals.size() - goalsOnTrack;
 
         var summary = new DashboardResponse.FinancialSummary(
-                netWorth.netWorth(), netWorth.liquidAssets(), netWorth.illiquidAssets(),
+                netWorth.netWorth(), netWorth.liquidAssets(),
+                netWorth.marketLinkedAssets(), netWorth.restrictedAssets(),
+                netWorth.illiquidAssets(),
                 netWorth.totalLiabilities(), cashFlow.monthlySurplus(),
                 emergency.coverageMonths(), risk.effectiveLevel().name(),
                 goals.size(), goalsOnTrack, goalsAtRisk
@@ -91,11 +93,14 @@ public class DashboardController {
 
         List<DashboardResponse.DimensionStatus> dims = new ArrayList<>();
 
-        // 1. Liquidity
+        // 1. Liquidity (4-tier view)
         String liquidStatus = nw.liquidAssets().compareTo(BigDecimal.valueOf(100_000)) >= 0 ? "healthy" : "warning";
         dims.add(new DashboardResponse.DimensionStatus(1, "Liquidity Status",
                 liquidStatus,
-                "Liquid assets: ₹" + nw.liquidAssets().toPlainString(),
+                "Liquid: ₹" + nw.liquidAssets().toPlainString()
+                        + " | Market-linked: ₹" + nw.marketLinkedAssets().toPlainString()
+                        + " | Restricted: ₹" + nw.restrictedAssets().toPlainString()
+                        + " | Illiquid: ₹" + nw.illiquidAssets().toPlainString(),
                 liquidStatus.equals("warning") ? List.of("Build liquid emergency reserves") : List.of()));
 
         // 2. Insurance
@@ -214,12 +219,13 @@ public class DashboardController {
                 .mapToInt(GoalAssessment::yearsRemaining)
                 .min().orElse(20);
 
+        BigDecimal accessible = nw.accessibleAssets();
         RiskContext ctx = new RiskContext(
                 tolerance, cf.monthlySurplus(), nw.totalLiabilities(),
-                nw.liquidAssets(), cf.grossMonthlyIncome(),
+                accessible, cf.grossMonthlyIncome(),
                 ec.coverageMonths(), null,
                 shortestHorizon, age != null ? age : 35,
-                retirementAge, nw.liquidAssets(), nw.totalLiabilities()
+                retirementAge, accessible, nw.totalLiabilities()
         );
 
         return riskAssessor.assess(ctx);

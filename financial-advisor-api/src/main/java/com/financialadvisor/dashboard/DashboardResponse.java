@@ -35,6 +35,8 @@ public record DashboardResponse(
     public record FinancialSummary(
             BigDecimal netWorth,
             BigDecimal liquidAssets,
+            BigDecimal marketLinkedAssets,
+            BigDecimal restrictedAssets,
             BigDecimal illiquidAssets,
             BigDecimal totalLiabilities,
             BigDecimal monthlySurplus,
