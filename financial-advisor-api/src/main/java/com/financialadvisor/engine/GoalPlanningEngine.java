@@ -44,8 +44,14 @@ public class GoalPlanningEngine {
     GoalAssessment assessSingleGoal(Map<String, Object> goal, Map<String, Object> assets) {
         String goalId = getString(goal, "id");
         String goalName = getString(goal, "name");
+        if (goalId == null && goalName != null) {
+            goalId = goalName.toLowerCase().replaceAll("\\s+", "-");
+        }
 
         BigDecimal targetToday = getBigDecimal(goal, "targetAmountToday");
+        if (targetToday == null) {
+            targetToday = getBigDecimal(goal, "targetAmount");
+        }
         if (targetToday == null) {
             targetToday = BigDecimal.ZERO;
         }

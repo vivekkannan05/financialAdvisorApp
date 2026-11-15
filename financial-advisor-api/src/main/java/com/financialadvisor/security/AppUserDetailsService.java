@@ -16,23 +16,24 @@ import org.springframework.stereotype.Service;
 @Service
 public class AppUserDetailsService implements UserDetailsService {
 
-    private final UserDetails singleUser;
+    private final String configuredUsername;
+
+    private final String encodedPassword;
 
     public AppUserDetailsService(AppProperties appProperties, PasswordEncoder passwordEncoder) {
         String rawPassword = System.getenv().getOrDefault("JWT_DEFAULT_PASSWORD", "changeme");
-        String username = System.getenv().getOrDefault("JWT_DEFAULT_USER", "admin");
-
-        this.singleUser = User.builder()
-                .username(username)
-                .password(passwordEncoder.encode(rawPassword))
-                .roles("USER")
-                .build();
+        this.configuredUsername = System.getenv().getOrDefault("JWT_DEFAULT_USER", "admin");
+        this.encodedPassword = passwordEncoder.encode(rawPassword);
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        if (singleUser.getUsername().equals(username)) {
-            return singleUser;
+        if (configuredUsername.equals(username)) {
+            return User.builder()
+                    .username(configuredUsername)
+                    .password(encodedPassword)
+                    .roles("USER")
+                    .build();
         }
         throw new UsernameNotFoundException("User not found: " + username);
     }

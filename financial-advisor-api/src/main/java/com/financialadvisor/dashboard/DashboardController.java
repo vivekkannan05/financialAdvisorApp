@@ -116,7 +116,7 @@ public class DashboardController {
 
         // 4. Retirement
         Optional<GoalAssessment> retirement = goals.stream()
-                .filter(g -> g.goalId().toLowerCase().contains("retire")).findFirst();
+                .filter(g -> g.goalId() != null && g.goalId().toLowerCase().contains("retire")).findFirst();
         String retStatus = retirement.map(g -> g.fundingPercent().compareTo(new BigDecimal("50")) >= 0 ? "on-track" : "at-risk")
                 .orElse("not-set");
         dims.add(new DashboardResponse.DimensionStatus(4, "Retirement Trajectory",
@@ -126,7 +126,7 @@ public class DashboardController {
 
         // 5. Education
         Optional<GoalAssessment> education = goals.stream()
-                .filter(g -> g.goalId().toLowerCase().contains("educ")).findFirst();
+                .filter(g -> g.goalId() != null && g.goalId().toLowerCase().contains("educ")).findFirst();
         String eduStatus = education.map(g -> g.fundingPercent().compareTo(new BigDecimal("50")) >= 0 ? "on-track" : "at-risk")
                 .orElse("not-set");
         dims.add(new DashboardResponse.DimensionStatus(5, "Education Trajectory",
