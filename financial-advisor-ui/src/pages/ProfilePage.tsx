@@ -19,14 +19,30 @@ interface LoanItem {
   remainingMonths: number;
 }
 
+interface InsuranceItem {
+  id: string;
+  policyType: string;
+  coverAmount: number;
+  premium: number;
+  premiumFrequency: string;
+}
+
+interface InvestmentItem {
+  id: string;
+  instrument: string;
+  amount: number;
+  frequency: string;
+  expectedReturn: number;
+}
+
 interface ProfileData {
   personal: { age: number; retirementAge: number; riskTolerance: string; city: string; dependents: number };
   income: { monthlySalary: number; otherIncome: number };
   expenses: DynamicItem[];
   assets: DynamicItem[];
   liabilities: LoanItem[];
-  insurance: { termLifeCover: number; termLifePremium: number; healthCover: number; healthPremium: number };
-  investments: { monthlySIP: number; expectedReturn: number };
+  insurance: InsuranceItem[];
+  investments: InvestmentItem[];
   goals: Array<{ name: string; targetAmount: number; targetYear: number; priority: string }>;
 }
 
@@ -152,6 +168,95 @@ const LOAN_KEY_MAP: Record<string, string> = {
 };
 
 /* ══════════════════════════════════════════════════════════════
+   INSURANCE constants
+   ══════════════════════════════════════════════════════════════ */
+const INSURANCE_SUGGESTIONS = [
+  'Term Life Insurance', 'Health Insurance (Individual)', 'Health Insurance (Family Floater)',
+  'Critical Illness Cover', 'Personal Accident Cover', 'Super Top-Up Health',
+  'Motor Insurance (Car)', 'Motor Insurance (Two-Wheeler)', 'Home Insurance',
+  'Travel Insurance', 'Endowment Plan', 'Child Plan (ULIP)', 'Other Insurance',
+];
+
+const INSURANCE_EMOJI: Record<string, string> = {
+  'Term Life Insurance': '🛡️', 'Health Insurance (Individual)': '🏥',
+  'Health Insurance (Family Floater)': '👨‍👩‍👧‍👦', 'Critical Illness Cover': '💊',
+  'Personal Accident Cover': '🚑', 'Super Top-Up Health': '➕',
+  'Motor Insurance (Car)': '🚗', 'Motor Insurance (Two-Wheeler)': '🏍️',
+  'Home Insurance': '🏠', 'Travel Insurance': '✈️',
+  'Endowment Plan': '📋', 'Child Plan (ULIP)': '👶', 'Other Insurance': '📦',
+};
+
+const INSURANCE_TOOLTIPS: Record<string, string> = {
+  'Term Life Insurance': 'Pure life cover — pays a lump sum to your family if something happens. Experts say 10-15x annual income.',
+  'Health Insurance (Individual)': 'Covers your hospital bills. Get at least ₹5-10 lakh cover.',
+  'Health Insurance (Family Floater)': 'One policy covers the whole family. Shared cover amount — ₹10-20 lakh recommended.',
+  'Critical Illness Cover': 'Pays a lump sum if you\'re diagnosed with cancer, heart attack, stroke, etc.',
+  'Personal Accident Cover': 'Covers death or disability from accidents. Usually cheap — ₹100-200/month.',
+  'Super Top-Up Health': 'Activates AFTER your base health plan limit is crossed. Cheap way to get ₹50L+ cover.',
+  'Motor Insurance (Car)': 'Third-party is mandatory by law. Comprehensive also covers your car damage.',
+  'Motor Insurance (Two-Wheeler)': 'Third-party mandatory. Comprehensive costs just ₹1000-3000/year.',
+  'Home Insurance': 'Covers your home against fire, floods, earthquakes, burglary.',
+  'Travel Insurance': 'Covers medical emergencies, trip cancellations, baggage loss when travelling.',
+  'Endowment Plan': 'Insurance + savings combo. Low returns — consider term + mutual fund instead.',
+  'Child Plan (ULIP)': 'Insurance + investment for child\'s future. Check charges carefully!',
+  'Other Insurance': 'Any other insurance policy not listed above.',
+};
+
+const INSURANCE_KEY_MAP: Record<string, string> = {
+  termLifeCover: 'Term Life Insurance', termLife: 'Term Life Insurance',
+  healthCover: 'Health Insurance (Individual)', health: 'Health Insurance (Individual)',
+  healthFamily: 'Health Insurance (Family Floater)',
+  criticalIllness: 'Critical Illness Cover', personalAccident: 'Personal Accident Cover',
+  superTopUp: 'Super Top-Up Health',
+};
+
+const PREMIUM_FREQUENCIES = ['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'] as const;
+
+/* ══════════════════════════════════════════════════════════════
+   INVESTMENT constants
+   ══════════════════════════════════════════════════════════════ */
+const INVESTMENT_SUGGESTIONS = [
+  'SIP (Mutual Funds)', 'PPF Contribution', 'NPS Contribution', 'ELSS (Tax Saving MF)',
+  'Sukanya Samriddhi (SSY)', 'Recurring Deposit (RD)', 'Direct Stocks',
+  'Gold / SGB', 'EPF Voluntary (VPF)', 'NSC / KVP', 'ULIP Premium',
+  'Chit Fund', 'Cryptocurrency', 'Other Investment',
+];
+
+const INVESTMENT_EMOJI: Record<string, string> = {
+  'SIP (Mutual Funds)': '📊', 'PPF Contribution': '🏛️', 'NPS Contribution': '🧓',
+  'ELSS (Tax Saving MF)': '💰', 'Sukanya Samriddhi (SSY)': '👧',
+  'Recurring Deposit (RD)': '🔄', 'Direct Stocks': '📈',
+  'Gold / SGB': '✨', 'EPF Voluntary (VPF)': '🏢', 'NSC / KVP': '📮',
+  'ULIP Premium': '📋', 'Chit Fund': '🤝', 'Cryptocurrency': '₿',
+  'Other Investment': '📦',
+};
+
+const INVESTMENT_TOOLTIPS: Record<string, string> = {
+  'SIP (Mutual Funds)': 'Systematic Investment Plan — auto-invests in mutual funds. Great for wealth building! Expect 10-12% long-term.',
+  'PPF Contribution': 'Public Provident Fund — govt scheme, tax-free returns ~7.1%. Max ₹1.5L/year.',
+  'NPS Contribution': 'National Pension System — extra tax benefit of ₹50K under 80CCD(1B). Locked until 60.',
+  'ELSS (Tax Saving MF)': 'Equity Linked Savings Scheme — 3-year lock-in, tax benefit under 80C. Best tax-saving option!',
+  'Sukanya Samriddhi (SSY)': 'Govt scheme for girl child. High interest (~8%), 80C benefit. Max ₹1.5L/year.',
+  'Recurring Deposit (RD)': 'Fixed monthly deposit with guaranteed returns. Like FD but you deposit monthly.',
+  'Direct Stocks': 'Monthly amount you invest directly in stocks via Zerodha, Groww, etc.',
+  'Gold / SGB': 'Monthly investment in gold — digital gold, gold ETF, or Sovereign Gold Bonds.',
+  'EPF Voluntary (VPF)': 'Extra contribution to PF beyond the mandatory 12%. Same interest as EPF (~8.25%).',
+  'NSC / KVP': 'National Savings Certificate / Kisan Vikas Patra — post office savings schemes.',
+  'ULIP Premium': 'Unit Linked Insurance Plan premium. Combines insurance + investment.',
+  'Chit Fund': 'Monthly chit fund contribution. Popular in South India.',
+  'Cryptocurrency': 'Monthly crypto investment. Very volatile — keep this small!',
+  'Other Investment': 'Any other regular investment not listed above.',
+};
+
+const INVESTMENT_KEY_MAP: Record<string, string> = {
+  monthlySIP: 'SIP (Mutual Funds)', sip: 'SIP (Mutual Funds)',
+  ppf: 'PPF Contribution', nps: 'NPS Contribution', elss: 'ELSS (Tax Saving MF)',
+  rd: 'Recurring Deposit (RD)', stocks: 'Direct Stocks',
+};
+
+const INVESTMENT_FREQUENCIES = ['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'] as const;
+
+/* ══════════════════════════════════════════════════════════════
    Shared helpers
    ══════════════════════════════════════════════════════════════ */
 function uid(): string {
@@ -239,6 +344,122 @@ function loansToObject(loans: LoanItem[]): Record<string, Record<string, number>
   return obj;
 }
 
+function parseInsurance(raw: unknown, keyMap: Record<string, string>): InsuranceItem[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return (raw as InsuranceItem[]).map((p) => ({
+      id: p.id || uid(),
+      policyType: String(p.policyType || ''),
+      coverAmount: Number(p.coverAmount) || 0,
+      premium: Number(p.premium) || 0,
+      premiumFrequency: String(p.premiumFrequency || 'Monthly'),
+    }));
+  }
+  const obj = raw as Record<string, unknown>;
+  const items: InsuranceItem[] = [];
+  const coverKeys = new Set<string>();
+  for (const [key, value] of Object.entries(obj)) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const pol = value as Record<string, unknown>;
+      items.push({
+        id: uid(),
+        policyType: keyMap[key] || key,
+        coverAmount: Number(pol.cover ?? pol.coverAmount ?? 0) || 0,
+        premium: Number(pol.premium ?? 0) || 0,
+        premiumFrequency: String(pol.premiumFrequency || 'Monthly'),
+      });
+      coverKeys.add(key);
+    }
+  }
+  if (items.length === 0) {
+    const termCover = Number(obj.termLifeCover ?? 0) || 0;
+    const termPremium = Number(obj.termLifePremium ?? 0) || 0;
+    if (termCover > 0 || termPremium > 0) {
+      items.push({ id: uid(), policyType: 'Term Life Insurance', coverAmount: termCover, premium: termPremium, premiumFrequency: 'Monthly' });
+    }
+    const healthCover = Number(obj.healthCover ?? 0) || 0;
+    const healthPremium = Number(obj.healthPremium ?? 0) || 0;
+    if (healthCover > 0 || healthPremium > 0) {
+      items.push({ id: uid(), policyType: 'Health Insurance (Family Floater)', coverAmount: healthCover, premium: healthPremium, premiumFrequency: 'Monthly' });
+    }
+  }
+  return items;
+}
+
+function insuranceToObject(policies: InsuranceItem[]): Record<string, Record<string, unknown>> {
+  const obj: Record<string, Record<string, unknown>> = {};
+  policies.forEach((p) => {
+    if (p.policyType.trim() && (p.coverAmount > 0 || p.premium > 0)) {
+      obj[p.policyType.trim()] = {
+        cover: p.coverAmount,
+        premium: p.premium,
+        premiumFrequency: p.premiumFrequency.toLowerCase(),
+      };
+      saveCustom('fa-custom-insurance-types', INSURANCE_SUGGESTIONS, p.policyType.trim());
+    }
+  });
+  return obj;
+}
+
+function parseInvestments(raw: unknown, keyMap: Record<string, string>): InvestmentItem[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return (raw as InvestmentItem[]).map((inv) => ({
+      id: inv.id || uid(),
+      instrument: String(inv.instrument || ''),
+      amount: Number(inv.amount) || 0,
+      frequency: String(inv.frequency || 'Monthly'),
+      expectedReturn: Number(inv.expectedReturn) || 0,
+    }));
+  }
+  const obj = raw as Record<string, unknown>;
+  const items: InvestmentItem[] = [];
+  for (const [key, value] of Object.entries(obj)) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const inv = value as Record<string, unknown>;
+      items.push({
+        id: uid(),
+        instrument: keyMap[key] || key,
+        amount: Number(inv.amount ?? 0) || 0,
+        frequency: String(inv.frequency || 'Monthly'),
+        expectedReturn: Number(inv.expectedReturn ?? inv.expectedReturnRate ?? 0) || 0,
+      });
+    }
+  }
+  if (items.length === 0) {
+    const sip = Number(obj.monthlySIP ?? 0) || 0;
+    const ret = Number(obj.expectedReturn ?? 12) || 0;
+    if (sip > 0) {
+      items.push({ id: uid(), instrument: 'SIP (Mutual Funds)', amount: sip, frequency: 'Monthly', expectedReturn: ret });
+    }
+  }
+  return items;
+}
+
+const FREQ_MONTHLY_DIVISOR: Record<string, number> = {
+  monthly: 1, quarterly: 3, 'half-yearly': 6, yearly: 12,
+};
+
+function monthlyEquivalent(amount: number, frequency: string): number {
+  const divisor = FREQ_MONTHLY_DIVISOR[frequency.toLowerCase()] ?? 1;
+  return amount / divisor;
+}
+
+function investmentsToObject(investments: InvestmentItem[]): Record<string, unknown> {
+  const obj: Record<string, unknown> = {};
+  investments.forEach((inv) => {
+    if (inv.instrument.trim() && inv.amount > 0) {
+      obj[inv.instrument.trim()] = {
+        amount: inv.amount,
+        frequency: inv.frequency.toLowerCase(),
+        expectedReturn: inv.expectedReturn,
+      };
+      saveCustom('fa-custom-investment-instruments', INVESTMENT_SUGGESTIONS, inv.instrument.trim());
+    }
+  });
+  return obj;
+}
+
 /* ── Default data ─────────────────────────────────────────── */
 const defaultData: ProfileData = {
   personal: { age: 30, retirementAge: 60, riskTolerance: 'MODERATE', city: '', dependents: 0 },
@@ -246,8 +467,8 @@ const defaultData: ProfileData = {
   expenses: [],
   assets: [],
   liabilities: [],
-  insurance: { termLifeCover: 0, termLifePremium: 0, healthCover: 0, healthPremium: 0 },
-  investments: { monthlySIP: 0, expectedReturn: 12 },
+  insurance: [],
+  investments: [],
   goals: [],
 };
 
@@ -298,8 +519,8 @@ export default function ProfilePage() {
       expenses: parseItems(incoming?.expenses, EXPENSE_KEY_MAP),
       assets: parseItems(incoming?.assets, ASSET_KEY_MAP),
       liabilities: parseLoans(incoming?.liabilities, LOAN_KEY_MAP),
-      insurance: coerceNumbers(base.insurance, incoming?.insurance as Record<string, unknown>),
-      investments: coerceNumbers(base.investments, incoming?.investments as Record<string, unknown>),
+      insurance: parseInsurance(incoming?.insurance, INSURANCE_KEY_MAP),
+      investments: parseInvestments(incoming?.investments, INVESTMENT_KEY_MAP),
       goals: incoming?.goals ?? base.goals,
     };
   }
@@ -315,6 +536,8 @@ export default function ProfilePage() {
         expenses: itemsToObject(data.expenses, 'fa-custom-expense-categories', EXPENSE_SUGGESTIONS),
         assets: itemsToObject(data.assets, 'fa-custom-asset-categories', ASSET_SUGGESTIONS),
         liabilities: loansToObject(data.liabilities),
+        insurance: insuranceToObject(data.insurance),
+        investments: investmentsToObject(data.investments),
       } as unknown as Record<string, unknown>;
       const saved = profile ? await updateProfile(payload) : await createProfile(payload);
       setProfile(saved);
@@ -331,7 +554,8 @@ export default function ProfilePage() {
   function updateField(section: keyof ProfileData, field: string, value: number | string) {
     setData((prev) => {
       const updated = { ...prev };
-      if (section !== 'expenses' && section !== 'assets' && section !== 'liabilities') {
+      if (section !== 'expenses' && section !== 'assets' && section !== 'liabilities'
+          && section !== 'insurance' && section !== 'investments') {
         (updated[section] as Record<string, unknown>)[field] = value;
       }
       return updated;
@@ -369,6 +593,46 @@ export default function ProfilePage() {
     setData((prev) => ({
       ...prev,
       liabilities: prev.liabilities.map((l) => (l.id === id ? { ...l, [field]: value } : l)),
+    }));
+  }
+
+  /* ── Insurance mutators ──────────────────────────────────── */
+  function addInsurance() {
+    setData((prev) => ({
+      ...prev,
+      insurance: [...prev.insurance, { id: uid(), policyType: '', coverAmount: 0, premium: 0, premiumFrequency: 'Monthly' }],
+    }));
+  }
+  function removeInsurance(id: string) {
+    setData((prev) => ({ ...prev, insurance: prev.insurance.filter((p) => p.id !== id) }));
+  }
+  function updateInsuranceType(id: string, policyType: string) {
+    setData((prev) => ({ ...prev, insurance: prev.insurance.map((p) => (p.id === id ? { ...p, policyType } : p)) }));
+  }
+  function updateInsuranceField(id: string, field: string, value: number | string) {
+    setData((prev) => ({
+      ...prev,
+      insurance: prev.insurance.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
+    }));
+  }
+
+  /* ── Investment mutators ────────────────────────────────── */
+  function addInvestment() {
+    setData((prev) => ({
+      ...prev,
+      investments: [...prev.investments, { id: uid(), instrument: '', amount: 0, frequency: 'Monthly', expectedReturn: 12 }],
+    }));
+  }
+  function removeInvestment(id: string) {
+    setData((prev) => ({ ...prev, investments: prev.investments.filter((inv) => inv.id !== id) }));
+  }
+  function updateInvestmentInstrument(id: string, instrument: string) {
+    setData((prev) => ({ ...prev, investments: prev.investments.map((inv) => (inv.id === id ? { ...inv, instrument } : inv)) }));
+  }
+  function updateInvestmentField(id: string, field: string, value: number | string) {
+    setData((prev) => ({
+      ...prev,
+      investments: prev.investments.map((inv) => (inv.id === id ? { ...inv, [field]: value } : inv)),
     }));
   }
 
@@ -414,6 +678,11 @@ export default function ProfilePage() {
   const usedLoanTypes = data.liabilities.map((l) => l.loanType).filter(Boolean);
   const totalEmi = data.liabilities.reduce((sum, l) => sum + l.emi, 0);
   const totalOutstanding = data.liabilities.reduce((sum, l) => sum + l.outstanding, 0);
+  const usedInsuranceTypes = data.insurance.map((p) => p.policyType).filter(Boolean);
+  const totalPremiumMonthly = data.insurance.reduce((sum, p) => sum + monthlyEquivalent(p.premium, p.premiumFrequency), 0);
+  const totalCover = data.insurance.reduce((sum, p) => sum + p.coverAmount, 0);
+  const usedInvestmentInstruments = data.investments.map((inv) => inv.instrument).filter(Boolean);
+  const totalInvestmentMonthly = data.investments.reduce((sum, inv) => sum + monthlyEquivalent(inv.amount, inv.frequency), 0);
 
   /* ══════════════════════════════════════════════════════════
      Render
@@ -591,33 +860,80 @@ export default function ProfilePage() {
           </FormSection>
         )}
 
-        {/* ── Insurance ── */}
+        {/* ── Insurance (dynamic) ── */}
         {activeSection === 'insurance' && (
-          <FormSection title="Insurance Policies" hint="Insurance protects you and your family." icon="🛡️">
-            <FormRow>
-              <NumberField label="Term Life Cover Amount" value={data.insurance.termLifeCover} prefix="₹" onChange={(v) => updateField('insurance', 'termLifeCover', v)}
-                tooltip="How much your family gets if something happens. Experts say 10-15x annual income." />
-              <NumberField label="Term Life Premium (monthly)" value={data.insurance.termLifePremium} prefix="₹" onChange={(v) => updateField('insurance', 'termLifePremium', v)}
-                tooltip="How much you pay monthly for term life insurance. If yearly, divide by 12." />
-            </FormRow>
-            <FormRow>
-              <NumberField label="Health Insurance Cover" value={data.insurance.healthCover} prefix="₹" onChange={(v) => updateField('insurance', 'healthCover', v)}
-                tooltip="Maximum your health insurance pays for hospital bills. Get ₹10-20 lakh for a family." />
-              <NumberField label="Health Premium (monthly)" value={data.insurance.healthPremium} prefix="₹" onChange={(v) => updateField('insurance', 'healthPremium', v)}
-                tooltip="Monthly cost of health insurance. If yearly, divide by 12." />
-            </FormRow>
+          <FormSection title="Insurance Policies" hint="Add each insurance policy you have. Premium can be monthly, quarterly, or yearly." icon="🛡️">
+            <div className="space-y-4">
+              {data.insurance.length === 0 && (
+                <div className="text-center py-8 text-gray-400 dark:text-gray-500">
+                  <span className="text-4xl block mb-3">🛡️</span>
+                  <p className="text-sm">No insurance policies added yet. Every family needs at least term life + health insurance!</p>
+                </div>
+              )}
+              {data.insurance.map((policy) => (
+                <InsuranceCard
+                  key={policy.id}
+                  policy={policy}
+                  usedTypes={usedInsuranceTypes}
+                  onTypeChange={(t) => updateInsuranceType(policy.id, t)}
+                  onFieldChange={(f, v) => updateInsuranceField(policy.id, f, v)}
+                  onRemove={() => removeInsurance(policy.id)}
+                />
+              ))}
+            </div>
+            <button onClick={addInsurance} type="button"
+              className="w-full mt-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm
+                         text-gray-500 dark:text-gray-400 hover:border-indigo-400 dark:hover:border-indigo-600
+                         hover:text-indigo-600 dark:hover:text-indigo-400
+                         hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-all font-medium">
+              ➕ Add an Insurance Policy
+            </button>
+            {data.insurance.length > 0 && (
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-800">
+                <div className="flex flex-wrap gap-x-8 gap-y-1">
+                  <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                    🛡️ Total Cover: ₹{totalCover.toLocaleString('en-IN')}
+                  </p>
+                  <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                    📅 Total Premium/month: ₹{Math.round(totalPremiumMonthly).toLocaleString('en-IN')}
+                  </p>
+                </div>
+              </div>
+            )}
           </FormSection>
         )}
 
-        {/* ── Investments ── */}
+        {/* ── Investments (dynamic) ── */}
         {activeSection === 'investments' && (
-          <FormSection title="Monthly Investments" hint="Money you invest regularly every month" icon="📈">
-            <FormRow>
-              <NumberField label="Monthly SIP Amount" value={data.investments.monthlySIP} prefix="₹" onChange={(v) => updateField('investments', 'monthlySIP', v)}
-                tooltip="SIP = Systematic Investment Plan. Money auto-invested in mutual funds monthly." />
-              <NumberField label="Expected Return (%)" value={data.investments.expectedReturn} onChange={(v) => updateField('investments', 'expectedReturn', v)}
-                tooltip="Expected % return per year? Stocks/MFs: 10-12%. FDs: 6-7%. PPF: 7-8%." />
-            </FormRow>
+          <FormSection title="Regular Investments" hint="Add each investment you make regularly — SIPs, PPF, NPS, RDs, and more." icon="📈">
+            <div className="space-y-4">
+              {data.investments.length === 0 && (
+                <div className="text-center py-8 text-gray-400 dark:text-gray-500">
+                  <span className="text-4xl block mb-3">📈</span>
+                  <p className="text-sm">No investments added yet. Start with a SIP — even ₹500/month makes a difference!</p>
+                </div>
+              )}
+              {data.investments.map((inv) => (
+                <InvestmentCard
+                  key={inv.id}
+                  investment={inv}
+                  usedInstruments={usedInvestmentInstruments}
+                  onInstrumentChange={(t) => updateInvestmentInstrument(inv.id, t)}
+                  onFieldChange={(f, v) => updateInvestmentField(inv.id, f, v)}
+                  onRemove={() => removeInvestment(inv.id)}
+                />
+              ))}
+            </div>
+            <button onClick={addInvestment} type="button"
+              className="w-full mt-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm
+                         text-gray-500 dark:text-gray-400 hover:border-indigo-400 dark:hover:border-indigo-600
+                         hover:text-indigo-600 dark:hover:text-indigo-400
+                         hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-all font-medium">
+              ➕ Add an Investment
+            </button>
+            {data.investments.length > 0 && (
+              <TotalBar color="emerald" label="Total Monthly Investment" value={Math.round(totalInvestmentMonthly)} />
+            )}
           </FormSection>
         )}
 
@@ -785,6 +1101,226 @@ function LoanCard({ loan, usedTypes, onTypeChange, onFieldChange, onRemove }: {
         <NumberField label="Months Remaining" value={loan.remainingMonths}
           onChange={(v) => onFieldChange('remainingMonths', v)}
           tooltip="How many more monthly EMI payments until fully paid off." />
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   InsuranceCard — autocomplete policy type + cover/premium/frequency + delete
+   ══════════════════════════════════════════════════════════════ */
+function InsuranceCard({ policy, usedTypes, onTypeChange, onFieldChange, onRemove }: {
+  policy: InsuranceItem;
+  usedTypes: string[];
+  onTypeChange: (t: string) => void;
+  onFieldChange: (field: string, value: number | string) => void;
+  onRemove: () => void;
+}) {
+  const [search, setSearch] = useState(policy.policyType);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const customTypes = loadCustom('fa-custom-insurance-types');
+  const allSuggestions = [...INSURANCE_SUGGESTIONS, ...customTypes.filter((c) => !INSURANCE_SUGGESTIONS.includes(c))];
+  const filtered = allSuggestions.filter(
+    (s) => s.toLowerCase().includes(search.toLowerCase()) && (s === policy.policyType || !usedTypes.includes(s)),
+  );
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        if (search !== policy.policyType) onTypeChange(search);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [search, policy.policyType, onTypeChange]);
+
+  function selectType(t: string) { setSearch(t); onTypeChange(t); setOpen(false); }
+
+  const emoji = INSURANCE_EMOJI[policy.policyType] || '🛡️';
+  const tooltip = INSURANCE_TOOLTIPS[policy.policyType];
+
+  return (
+    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl relative animate-fade-in">
+      <button type="button" onClick={onRemove}
+        className="absolute top-3 right-3 w-7 h-7 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400
+                   text-xs font-bold flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors"
+        title="Remove this policy">✕</button>
+
+      <div className="relative mb-4 max-w-sm" ref={ref}>
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="text-lg">{emoji}</span>
+          <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Policy Type</label>
+          {tooltip && <InfoTooltip text={tooltip}><span /></InfoTooltip>}
+        </div>
+        <input type="text" value={search}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (filtered.length > 0 && search) selectType(filtered[0]);
+              else { onTypeChange(search); setOpen(false); }
+            }
+          }}
+          placeholder="Type to search policy type..."
+          className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                     bg-white dark:bg-gray-800 dark:text-gray-100
+                     focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
+        {open && filtered.length > 0 && (
+          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+                          border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
+                          max-h-48 overflow-y-auto animate-fade-in">
+            {filtered.map((s) => (
+              <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectType(s)}
+                className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30
+                           text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors
+                           first:rounded-t-xl last:rounded-b-xl">
+                <span>{INSURANCE_EMOJI[s] || '🛡️'}</span><span>{s}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {open && filtered.length === 0 && search.trim() && (
+          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+                          border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
+                          px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 animate-fade-in">
+            Press <strong>Enter</strong> to use "<em>{search}</em>" as a new policy type
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <NumberField label="Cover Amount" value={policy.coverAmount} prefix="₹"
+          onChange={(v) => onFieldChange('coverAmount', v)}
+          tooltip="How much the policy pays out (sum insured). Term life: 10-15x annual income. Health: ₹10-20 lakh." />
+        <NumberField label="Premium Amount" value={policy.premium} prefix="₹"
+          onChange={(v) => onFieldChange('premium', v)}
+          tooltip="How much you pay for this policy. Enter the amount per frequency selected." />
+        <div>
+          <div className="flex items-center gap-1 mb-1.5">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Premium Frequency</label>
+            <InfoTooltip text="How often do you pay the premium? Monthly, quarterly, half-yearly, or yearly."><span /></InfoTooltip>
+          </div>
+          <select value={policy.premiumFrequency} onChange={(e) => onFieldChange('premiumFrequency', e.target.value)}
+            className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                       bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100
+                       focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all">
+            {PREMIUM_FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   InvestmentCard — autocomplete instrument + amount/frequency/return + delete
+   ══════════════════════════════════════════════════════════════ */
+function InvestmentCard({ investment, usedInstruments, onInstrumentChange, onFieldChange, onRemove }: {
+  investment: InvestmentItem;
+  usedInstruments: string[];
+  onInstrumentChange: (t: string) => void;
+  onFieldChange: (field: string, value: number | string) => void;
+  onRemove: () => void;
+}) {
+  const [search, setSearch] = useState(investment.instrument);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const customInstruments = loadCustom('fa-custom-investment-instruments');
+  const allSuggestions = [...INVESTMENT_SUGGESTIONS, ...customInstruments.filter((c) => !INVESTMENT_SUGGESTIONS.includes(c))];
+  const filtered = allSuggestions.filter(
+    (s) => s.toLowerCase().includes(search.toLowerCase()) && (s === investment.instrument || !usedInstruments.includes(s)),
+  );
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        if (search !== investment.instrument) onInstrumentChange(search);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [search, investment.instrument, onInstrumentChange]);
+
+  function selectInstrument(t: string) { setSearch(t); onInstrumentChange(t); setOpen(false); }
+
+  const emoji = INVESTMENT_EMOJI[investment.instrument] || '📈';
+  const tooltip = INVESTMENT_TOOLTIPS[investment.instrument];
+
+  return (
+    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl relative animate-fade-in">
+      <button type="button" onClick={onRemove}
+        className="absolute top-3 right-3 w-7 h-7 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400
+                   text-xs font-bold flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors"
+        title="Remove this investment">✕</button>
+
+      <div className="relative mb-4 max-w-sm" ref={ref}>
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="text-lg">{emoji}</span>
+          <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Investment Instrument</label>
+          {tooltip && <InfoTooltip text={tooltip}><span /></InfoTooltip>}
+        </div>
+        <input type="text" value={search}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (filtered.length > 0 && search) selectInstrument(filtered[0]);
+              else { onInstrumentChange(search); setOpen(false); }
+            }
+          }}
+          placeholder="Type to search investment type..."
+          className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                     bg-white dark:bg-gray-800 dark:text-gray-100
+                     focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
+        {open && filtered.length > 0 && (
+          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+                          border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
+                          max-h-48 overflow-y-auto animate-fade-in">
+            {filtered.map((s) => (
+              <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectInstrument(s)}
+                className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30
+                           text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors
+                           first:rounded-t-xl last:rounded-b-xl">
+                <span>{INVESTMENT_EMOJI[s] || '📈'}</span><span>{s}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {open && filtered.length === 0 && search.trim() && (
+          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+                          border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
+                          px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 animate-fade-in">
+            Press <strong>Enter</strong> to use "<em>{search}</em>" as a new instrument
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <NumberField label="Investment Amount" value={investment.amount} prefix="₹"
+          onChange={(v) => onFieldChange('amount', v)}
+          tooltip="How much you invest per cycle. Enter the amount per frequency selected." />
+        <div>
+          <div className="flex items-center gap-1 mb-1.5">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Frequency</label>
+            <InfoTooltip text="How often do you invest? Most SIPs are monthly. PPF can be yearly."><span /></InfoTooltip>
+          </div>
+          <select value={investment.frequency} onChange={(e) => onFieldChange('frequency', e.target.value)}
+            className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                       bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100
+                       focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all">
+            {INVESTMENT_FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </div>
+        <NumberField label="Expected Return (%)" value={investment.expectedReturn}
+          onChange={(v) => onFieldChange('expectedReturn', v)}
+          tooltip="Expected annual return? MF/Stocks: 10-12%. PPF: 7.1%. FD/RD: 6-7%. NPS: 8-10%." />
       </div>
     </div>
   );

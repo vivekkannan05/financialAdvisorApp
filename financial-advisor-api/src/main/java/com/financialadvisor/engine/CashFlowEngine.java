@@ -129,7 +129,11 @@ public class CashFlowEngine {
                 if (premium == null) continue;
 
                 String freq = getString(insMap, "premiumFrequency");
-                if ("yearly".equalsIgnoreCase(freq)) {
+                if ("quarterly".equalsIgnoreCase(freq)) {
+                    premium = premium.divide(BigDecimal.valueOf(3), 2, FinancialMathUtil.ROUNDING_MODE);
+                } else if ("half-yearly".equalsIgnoreCase(freq)) {
+                    premium = premium.divide(BigDecimal.valueOf(6), 2, FinancialMathUtil.ROUNDING_MODE);
+                } else if ("yearly".equalsIgnoreCase(freq)) {
                     premium = premium.divide(BigDecimal.valueOf(12), 2, FinancialMathUtil.ROUNDING_MODE);
                 }
                 total = total.add(premium);
@@ -145,11 +149,32 @@ public class CashFlowEngine {
         Map<String, Object> investments = getSection(profileData, "investments");
         BigDecimal total = BigDecimal.ZERO;
 
-        BigDecimal monthlySIP = getBigDecimal(investments, "monthlySIP");
-        if (monthlySIP != null) total = total.add(monthlySIP);
+        for (Map.Entry<String, Object> entry : investments.entrySet()) {
+            if (entry.getValue() instanceof Map<?, ?> inv) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> invMap = (Map<String, Object>) inv;
+                BigDecimal amount = getBigDecimal(invMap, "amount");
+                if (amount == null) continue;
 
-        BigDecimal otherMonthly = getBigDecimal(investments, "otherMonthlyInvestment");
-        if (otherMonthly != null) total = total.add(otherMonthly);
+                String freq = getString(invMap, "frequency");
+                if ("quarterly".equalsIgnoreCase(freq)) {
+                    amount = amount.divide(BigDecimal.valueOf(3), 2, FinancialMathUtil.ROUNDING_MODE);
+                } else if ("half-yearly".equalsIgnoreCase(freq)) {
+                    amount = amount.divide(BigDecimal.valueOf(6), 2, FinancialMathUtil.ROUNDING_MODE);
+                } else if ("yearly".equalsIgnoreCase(freq)) {
+                    amount = amount.divide(BigDecimal.valueOf(12), 2, FinancialMathUtil.ROUNDING_MODE);
+                }
+                total = total.add(amount);
+            }
+        }
+
+        if (total.compareTo(BigDecimal.ZERO) == 0) {
+            BigDecimal monthlySIP = getBigDecimal(investments, "monthlySIP");
+            if (monthlySIP != null) total = total.add(monthlySIP);
+
+            BigDecimal otherMonthly = getBigDecimal(investments, "otherMonthlyInvestment");
+            if (otherMonthly != null) total = total.add(otherMonthly);
+        }
 
         return total;
     }

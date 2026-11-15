@@ -22,7 +22,8 @@ import static com.financialadvisor.engine.ProfileDataExtractor.*;
 @Service
 public class HealthAssessmentEngine {
 
-    private static final Set<String> ILLIQUID_ASSET_TYPES = Set.of("land", "gold", "apartment", "property");
+    private static final Set<String> ILLIQUID_ASSET_TYPES = Set.of(
+            "land", "gold", "apartment", "property", "real estate", "real_estate", "realestate");
 
     private final BigDecimal emergencyThresholdMonths;
 
@@ -193,7 +194,11 @@ public class HealthAssessmentEngine {
                 if (premium == null) continue;
 
                 String freq = getString(insMap, "premiumFrequency");
-                if ("yearly".equalsIgnoreCase(freq)) {
+                if ("quarterly".equalsIgnoreCase(freq)) {
+                    premium = premium.divide(BigDecimal.valueOf(3), 2, FinancialMathUtil.ROUNDING_MODE);
+                } else if ("half-yearly".equalsIgnoreCase(freq)) {
+                    premium = premium.divide(BigDecimal.valueOf(6), 2, FinancialMathUtil.ROUNDING_MODE);
+                } else if ("yearly".equalsIgnoreCase(freq)) {
                     premium = premium.divide(BigDecimal.valueOf(12), 2, FinancialMathUtil.ROUNDING_MODE);
                 }
                 total = total.add(premium);
@@ -228,7 +233,11 @@ public class HealthAssessmentEngine {
 
     @SuppressWarnings("unchecked")
     private boolean isIlliquid(String assetName, Object asset) {
-        if (ILLIQUID_ASSET_TYPES.contains(assetName.toLowerCase())) return true;
+        String lower = assetName.toLowerCase().replaceAll("[\\s_/\\-]+", " ").trim();
+        if (ILLIQUID_ASSET_TYPES.contains(lower)) return true;
+        for (String illiquidType : ILLIQUID_ASSET_TYPES) {
+            if (lower.contains(illiquidType)) return true;
+        }
         if (asset instanceof Map<?, ?> map) {
             return Boolean.FALSE.equals(((Map<String, Object>) map).getOrDefault("liquid", true))
                     || Boolean.TRUE.equals(((Map<String, Object>) map).get("liquid") instanceof Boolean b && !b);
