@@ -72,14 +72,7 @@ public class LlmOutputValidator {
 
         boolean hasUnverified = !warnings.isEmpty();
 
-        String validatedResponse = llmResponse;
-        if (hasUnverified) {
-            validatedResponse = llmResponse + "\n\n⚠️ _Note: Some amounts in this response " +
-                    "could not be verified against the rule engine. Please cross-check with " +
-                    "your dashboard data._";
-        }
-
-        return new ValidationResult(validatedResponse, warnings, hasUnverified);
+        return new ValidationResult(llmResponse, warnings, hasUnverified);
     }
 
     private List<String> extractAmounts(String text) {

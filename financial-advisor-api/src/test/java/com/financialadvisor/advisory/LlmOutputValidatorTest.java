@@ -50,7 +50,8 @@ class LlmOutputValidatorTest {
 
         assertTrue(result.hasUnverifiedClaims());
         assertFalse(result.warnings().isEmpty());
-        assertTrue(result.validatedResponse().contains("⚠️"));
+        assertFalse(result.validatedResponse().contains("⚠️"),
+                "Validator should not inject warnings into the response text — they go as separate data");
     }
 
     @Test

@@ -53,14 +53,10 @@ export default function ChatMessage({ role, content, source, warnings, timestamp
           <div className="text-sm whitespace-pre-wrap leading-relaxed">{content}</div>
 
           {warnings && warnings.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-amber-200/60 dark:border-amber-700/40 space-y-1.5">
-              <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">⚠️ Please note:</p>
-              {warnings.map((w, i) => (
-                <p key={i} className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
-                  <span className="shrink-0 mt-0.5">•</span>
-                  <span>{w}</span>
-                </p>
-              ))}
+            <div className="mt-3 pt-3 border-t border-gray-200/40 dark:border-gray-700/40">
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 italic">
+                💡 Some numbers above are AI-interpreted. Always cross-check important figures on your Dashboard.
+              </p>
             </div>
           )}
         </div>

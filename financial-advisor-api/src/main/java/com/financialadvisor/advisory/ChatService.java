@@ -79,18 +79,18 @@ public class ChatService {
                     .call()
                     .content();
 
-            Map<String, Object> engineData = tools.getFinancialHealth(userId);
+            Map<String, Object> engineData = collectAllToolData(userId);
 
             LlmOutputValidator.ValidationResult validation = validator.validate(aiResponse, engineData);
 
-            conversationMemory.addExchange(userId, message, validation.validatedResponse());
+            conversationMemory.addExchange(userId, message, aiResponse);
 
             log.info("Chat completed for user {} — {} validation warnings, {} conversation pairs",
                     userId, validation.warnings().size(),
                     conversationMemory.getHistory(userId).size() / 2);
 
             return ChatResponse.aiResponse(
-                    validation.validatedResponse(),
+                    aiResponse,
                     engineData,
                     validation.warnings()
             );
@@ -134,6 +134,30 @@ public class ChatService {
 
         sb.append("User's current question: ").append(currentMessage);
         return sb.toString();
+    }
+
+    /**
+     * Collects data from ALL tool functions for comprehensive output validation.
+     * This ensures amounts from goals, insurance, risk, etc. are all verified — not just health data.
+     */
+    private Map<String, Object> collectAllToolData(String userId) {
+        Map<String, Object> allData = new LinkedHashMap<>();
+        try {
+            allData.put("financialHealth", tools.getFinancialHealth(userId));
+        } catch (Exception e) {
+            log.warn("Could not collect financial health for validation: {}", e.getMessage());
+        }
+        try {
+            allData.put("goalFunding", tools.calculateGoalFunding(userId));
+        } catch (Exception e) {
+            log.warn("Could not collect goal funding for validation: {}", e.getMessage());
+        }
+        try {
+            allData.put("insurance", tools.getInsuranceSummary(userId));
+        } catch (Exception e) {
+            log.warn("Could not collect insurance for validation: {}", e.getMessage());
+        }
+        return allData;
     }
 
     /**

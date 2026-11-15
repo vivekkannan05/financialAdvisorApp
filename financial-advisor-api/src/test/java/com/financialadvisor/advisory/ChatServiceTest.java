@@ -84,7 +84,8 @@ class ChatServiceTest {
         var result = validator.validate(llmResponse, java.util.Map.of("currentSurplus", "30000"));
 
         assertTrue(result.hasUnverifiedClaims());
-        assertTrue(result.validatedResponse().contains("⚠️"));
+        assertFalse(result.validatedResponse().contains("⚠️"),
+                "Warnings go as separate API field, not injected into response text");
     }
 
     @Test
