@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 2.0 |
-| **Date** | 14 November 2026 |
+| **Version** | 2.1 |
+| **Date** | 15 November 2026 |
 | **Status** | **🔒 LOCKED** — Architecture review applied |
 | **Scope** | Private, single-user, India-first holistic financial adviser |
 
@@ -205,70 +205,85 @@ The profile uses a flexible schema. Core fields are documented below; additional
 ```json
 {
   "userId": "string",
-  "snapshotId": "string (ULID or ISO timestamp)",
-  "snapshotDate": "2026-11-14T00:00:00Z",
+  "snapshotId": "string (timestamp-based sort key)",
+  "snapshotDate": "2026-11-15T00:00:00Z",
   "isLatest": true,
-  "personalInfo": {
+  "personal": {
     "age": 40,
-    "retirementAge": null,
-    "dependents": ["spouse", "child1", "child2", "mother"]
+    "retirementAge": 60,
+    "riskTolerance": "MODERATE",
+    "city": "Bangalore",
+    "dependents": 3
   },
   "income": {
-    "monthlySalary": null,
-    "otherIncome": []
+    "monthlySalary": 275000,
+    "otherIncome": 0
   },
   "expenses": {
-    "monthlyHousehold": 88000,
-    "breakdown": {
-      "family": 60000,
-      "religious": 3000,
-      "suja": 5000,
-      "amma": 5000,
-      "kids": 10000,
-      "personal": 5000
-    }
+    "Rent / Housing": 35000,
+    "Groceries & Food": 15000,
+    "Bills & Utilities": 5000,
+    "Transportation": 8000,
+    "Fun & Entertainment": 10000,
+    "Other Expenses": 7000
   },
   "assets": {
-    "emergencyFD": { "value": 900000, "goalTag": "emergency", "locked": true },
-    "epf": { "value": 500000, "goalTag": "retirement" },
-    "mutualFunds": { "value": 344698, "goalTag": null },
-    "indianStocks": { "value": 159611, "goalTag": null },
-    "land": { "value": 500000, "goalTag": null, "liquid": false },
-    "gold": { "quantity": "100g", "purity": "22K", "value": null, "goalTag": null, "liquid": false },
-    "apartment": { "purchasePrice": 20000000, "paidPercent": 5, "goalTag": null, "liquid": false }
+    "Savings Account — Emergency Fund": { "value": 200000, "goalTag": "Emergency Fund" },
+    "Fixed Deposits (FD) — Emergency Fund": { "value": 900000, "goalTag": "Emergency Fund" },
+    "Mutual Funds — Retirement": { "value": 370000, "goalTag": "Retirement" },
+    "Stocks / Shares — Retirement": { "value": 150000, "goalTag": "Retirement" },
+    "EPF / PF — Retirement": { "value": 500000, "goalTag": "Retirement" },
+    "Gold — Emergency Fund": { "value": 300000, "goalTag": "Emergency Fund" }
   },
   "liabilities": {
-    "homeLoan": { "principal": 18000000, "status": "expected", "emiStartDate": null },
-    "creditCard": { "monthlySpend": 25000, "paidInFull": true, "isDebt": false }
+    "Home Loan": {
+      "outstanding": 18000000,
+      "emi": 44000,
+      "rateOfInterest": 7.55,
+      "remainingMonths": 300
+    }
   },
   "insurance": {
-    "termLife": { "user": { "cover": 35000000, "premium": 11000, "premiumFrequency": "monthly", "remainingYears": 10 } },
-    "termLifeSpouse": { "cover": 10000000, "premium": 3000, "premiumFrequency": "monthly", "remainingYears": 10 },
-    "healthFamily": { "cover": 1000000, "premium": 12000, "premiumFrequency": "yearly" },
-    "healthParents": { "cover": 1000000, "premium": 40000, "premiumFrequency": "yearly" }
+    "Term Life Insurance": { "cover": 45000000, "premium": 15000, "premiumFrequency": "Monthly" },
+    "Health Insurance (Family Floater)": { "cover": 1000000, "premium": 55000, "premiumFrequency": "Yearly" }
+  },
+  "investments": {
+    "Bandhan Small Cap Fund": {
+      "instrument": "SIP (Mutual Funds)",
+      "name": "Bandhan Small Cap Fund",
+      "amount": 6500,
+      "frequency": "Monthly",
+      "expectedReturn": 12,
+      "goalTag": ""
+    },
+    "Parag Parikh Flexi Cap Fund": {
+      "instrument": "SIP (Mutual Funds)",
+      "name": "Parag Parikh Flexi Cap Fund",
+      "amount": 8000,
+      "frequency": "Monthly",
+      "expectedReturn": 12,
+      "goalTag": "Retirement"
+    }
   },
   "goals": [
-    { "id": "retirement", "name": "Retirement", "targetDate": null, "targetAmountToday": null, "inflationRate": null },
-    { "id": "education", "name": "Children Education", "targetDate": null, "targetAmountToday": null, "inflationRate": null },
-    { "id": "furnishing", "name": "Apartment Furnishing", "targetDate": null, "targetAmountToday": 2000000, "inflationRate": null }
-  ],
-  "riskProfile": {
-    "behaviouralTolerance": "growth-oriented",
-    "notes": "Likely to continue SIPs and add investment during major market falls"
-  },
-  "planningPreference": "balance-growth-and-certainty",
-  "metadata": {
-    "createdAt": "2026-11-14T00:00:00Z",
-    "updatedAt": "2026-11-14T00:00:00Z",
-    "source": "manual-entry"
-  }
+    { "name": "Emergency Fund", "targetAmount": 2000000, "targetYear": 2027, "priority": "HIGH" },
+    { "name": "Mithran Education", "targetAmount": 5000000, "targetYear": 2034, "priority": "HIGH" },
+    { "name": "Retirement", "targetAmount": 100000000, "targetYear": 2056, "priority": "HIGH" },
+    { "name": "Anjana Education", "targetAmount": 7500000, "targetYear": 2039, "priority": "HIGH" }
+  ]
 }
 ```
 
 **Notes:**
-- Fields with `null` values are "not yet provided" — the engine will request them when needed.
-- `goalTag` links assets to specific goals. Untagged assets are flagged for assignment.
-- `locked: true` on emergency FD prevents automatic reallocation (FR-6.4).
+- Fields with `null` or `0` values are "not yet provided" — the engine will request them when needed.
+- `goalTag` links assets and investments to specific goals using the goal's display name (e.g., `"Emergency Fund"`, `"Retirement"`). Untagged items use `goalTag: ""`.
+- Backend goal matching is **case-insensitive and normalised** — `"Emergency Fund"`, `"emergency-fund"`, and `"emergency fund"` all match the same goal. Emergency detection uses substring matching (`contains("emergency")`).
+- Asset keys use a **composite format** when goal-tagged: `"Asset Type — Goal Name"` (e.g., `"Fixed Deposits (FD) — Emergency Fund"`). This allows duplicate asset types tagged to different goals. Untagged assets use the plain asset type as the key.
+- Investment keys use the fund/scheme name (e.g., `"Bandhan Small Cap Fund"`) with `(2)`, `(3)` suffixes for duplicates.
+- `premiumFrequency` and `frequency` use **Capitalized** convention: `"Monthly"`, `"Quarterly"`, `"Half-Yearly"`, `"Yearly"`. Backend comparisons are case-insensitive (`equalsIgnoreCase`).
+- `expectedReturn` on investments is auto-assigned based on instrument type (e.g., MF → 12%, PPF → 7.1%, NPS → 9%). Users do not set this directly.
+- Illiquidity is determined by substring matching on asset type (contains `"gold"`, `"land"`, `"property"`, `"real estate"`, `"apartment"`), not by a `liquid` flag.
+- Emergency fund protection (FR-6.4) is enforced by `goalTag` containing `"emergency"` — assets tagged to Emergency Fund are excluded from investable capital.
 - Additional fields added by the user are preserved in the flexible schema.
 
 ### 4.2 API Endpoints (Spring Boot)
@@ -414,7 +429,7 @@ The application SHALL be a single Spring Boot monolith. Separate microservices f
 |----|----------|
 | AC-3.1 | **Given** a goal with today's value and target date, **When** future value is calculated, **Then** the result applies the specified inflation rate compounded to the target date. |
 | AC-3.2 | **Given** two goals competing for the same surplus, **When** allocation is requested, **Then** the system shows the shortfall for each goal under different allocation scenarios. |
-| AC-3.3 | **Given** the emergency FD is tagged as "emergency" with locked=true, **When** the system calculates investable capital, **Then** the FD amount is excluded. |
+| AC-3.3 | **Given** an asset is tagged with a goal containing "emergency" (e.g., `goalTag: "Emergency Fund"`), **When** the system calculates investable capital, **Then** that asset is excluded from the investable pool and counted as emergency reserves. |
 
 ### AC-4: Risk Engine
 
@@ -670,6 +685,11 @@ All 20 finalized decisions (DL-001 through DL-020) from the Discovery Decision L
 | 2026-11-14 | UT-22 to UT-28 | (none) | Added | Tests for architecture review findings | Agent |
 | 2026-11-14 | IT-09 to IT-12 | (none) | Added | Integration tests for arch review findings | Agent |
 | 2026-11-14 | Spec version | 1.0 | 2.0 | Architecture review applied | Agent |
+| 2026-11-15 | §4.1 Schema | camelCase keys, flat assets, no investments section | Human-readable keys, goal-tagged assets `{ value, goalTag }`, dynamic investments section with instrument/name/frequency/goalTag, dynamic expenses/liabilities/insurance with human-readable keys | Implementation aligned — V1 UI uses dynamic forms with autocomplete | Agent |
+| 2026-11-15 | §4.1 Notes | `goalTag: "emergency"`, `locked: true`, `liquid: false` | `goalTag: "Emergency Fund"` (goal display name), substring matching for emergency, illiquidity by asset type name | Goal tagging uses goal display names; illiquidity via `isIlliquid()` substring matching | Agent |
+| 2026-11-15 | §4.1 Frequency | `premiumFrequency: "monthly"` (lowercase) | Capitalized convention: `"Monthly"`, `"Quarterly"`, `"Half-Yearly"`, `"Yearly"`; backend uses equalsIgnoreCase | Consistent casing across frontend and backend | Agent |
+| 2026-11-15 | AC-3.3 | `tagged as "emergency" with locked=true` | `goalTag` containing "emergency" (case-insensitive substring) | Emergency detection uses flexible matching, no `locked` flag | Agent |
+| 2026-11-15 | Spec version | 2.0 | 2.1 | Profile schema aligned with V1 implementation | Agent |
 
 ---
 
