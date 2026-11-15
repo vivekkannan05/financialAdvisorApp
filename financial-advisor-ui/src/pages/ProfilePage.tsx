@@ -1135,13 +1135,17 @@ function LoanCard({ loan, usedTypes, onTypeChange, onFieldChange, onRemove }: {
 }) {
   const [search, setSearch] = useState(loan.loanType);
   const [open, setOpen] = useState(false);
+  const [hlIdx, setHlIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const customTypes = loadCustom('fa-custom-loan-types');
   const allSuggestions = [...LOAN_SUGGESTIONS, ...customTypes.filter((c) => !LOAN_SUGGESTIONS.includes(c))];
   const filtered = allSuggestions.filter(
     (s) => s.toLowerCase().includes(search.toLowerCase()) && (s === loan.loanType || !usedTypes.includes(s)),
   );
+
+  useEffect(() => { setHlIdx(0); }, [filtered.length]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -1154,11 +1158,8 @@ function LoanCard({ loan, usedTypes, onTypeChange, onFieldChange, onRemove }: {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [search, loan.loanType, onTypeChange]);
 
-  function selectType(t: string) {
-    setSearch(t);
-    onTypeChange(t);
-    setOpen(false);
-  }
+  function selectType(t: string) { setSearch(t); onTypeChange(t); setOpen(false); }
+  function scrollHL(idx: number) { const items = listRef.current?.children; if (items?.[idx]) (items[idx] as HTMLElement).scrollIntoView({ block: 'nearest' }); }
 
   const emoji = LOAN_EMOJI[loan.loanType] || '💳';
   const tooltip = LOAN_TOOLTIPS[loan.loanType];
@@ -1178,32 +1179,28 @@ function LoanCard({ loan, usedTypes, onTypeChange, onFieldChange, onRemove }: {
           <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Loan Type</label>
           {tooltip && <InfoTooltip text={tooltip}><span /></InfoTooltip>}
         </div>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+        <input type="text" value={search}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); setHlIdx(0); }}
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (filtered.length > 0 && search) selectType(filtered[0]);
-              else { onTypeChange(search); setOpen(false); }
-            }
+            if (e.key === 'ArrowDown' && open && filtered.length > 0) { e.preventDefault(); const n = (hlIdx + 1) % filtered.length; setHlIdx(n); scrollHL(n); }
+            else if (e.key === 'ArrowUp' && open && filtered.length > 0) { e.preventDefault(); const n = (hlIdx - 1 + filtered.length) % filtered.length; setHlIdx(n); scrollHL(n); }
+            else if (e.key === 'Enter') { e.preventDefault(); if (open && filtered.length > 0) selectType(filtered[hlIdx] || filtered[0]); else { onTypeChange(search); setOpen(false); } }
+            else if (e.key === 'Escape') setOpen(false);
           }}
           placeholder="Type to search loan type..."
           className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
                      bg-white dark:bg-gray-800 dark:text-gray-100
-                     focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all"
-        />
+                     focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
         {open && filtered.length > 0 && (
-          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+          <div ref={listRef} className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
                           border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
                           max-h-48 overflow-y-auto animate-fade-in">
-            {filtered.map((s) => (
+            {filtered.map((s, i) => (
               <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectType(s)}
-                className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30
-                           text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors
-                           first:rounded-t-xl last:rounded-b-xl">
+                onMouseEnter={() => setHlIdx(i)}
+                className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 transition-colors first:rounded-t-xl last:rounded-b-xl
+                  ${i === hlIdx ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}>
                 <span>{LOAN_EMOJI[s] || '💳'}</span><span>{s}</span>
               </button>
             ))}
@@ -1249,13 +1246,17 @@ function InsuranceCard({ policy, usedTypes, onTypeChange, onFieldChange, onRemov
 }) {
   const [search, setSearch] = useState(policy.policyType);
   const [open, setOpen] = useState(false);
+  const [hlIdx, setHlIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const customTypes = loadCustom('fa-custom-insurance-types');
   const allSuggestions = [...INSURANCE_SUGGESTIONS, ...customTypes.filter((c) => !INSURANCE_SUGGESTIONS.includes(c))];
   const filtered = allSuggestions.filter(
     (s) => s.toLowerCase().includes(search.toLowerCase()) && (s === policy.policyType || !usedTypes.includes(s)),
   );
+
+  useEffect(() => { setHlIdx(0); }, [filtered.length]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -1269,6 +1270,7 @@ function InsuranceCard({ policy, usedTypes, onTypeChange, onFieldChange, onRemov
   }, [search, policy.policyType, onTypeChange]);
 
   function selectType(t: string) { setSearch(t); onTypeChange(t); setOpen(false); }
+  function scrollHL(idx: number) { const items = listRef.current?.children; if (items?.[idx]) (items[idx] as HTMLElement).scrollIntoView({ block: 'nearest' }); }
 
   const emoji = INSURANCE_EMOJI[policy.policyType] || '🛡️';
   const tooltip = INSURANCE_TOOLTIPS[policy.policyType];
@@ -1287,28 +1289,27 @@ function InsuranceCard({ policy, usedTypes, onTypeChange, onFieldChange, onRemov
           {tooltip && <InfoTooltip text={tooltip}><span /></InfoTooltip>}
         </div>
         <input type="text" value={search}
-          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); setHlIdx(0); }}
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (filtered.length > 0 && search) selectType(filtered[0]);
-              else { onTypeChange(search); setOpen(false); }
-            }
+            if (e.key === 'ArrowDown' && open && filtered.length > 0) { e.preventDefault(); const n = (hlIdx + 1) % filtered.length; setHlIdx(n); scrollHL(n); }
+            else if (e.key === 'ArrowUp' && open && filtered.length > 0) { e.preventDefault(); const n = (hlIdx - 1 + filtered.length) % filtered.length; setHlIdx(n); scrollHL(n); }
+            else if (e.key === 'Enter') { e.preventDefault(); if (open && filtered.length > 0) selectType(filtered[hlIdx] || filtered[0]); else { onTypeChange(search); setOpen(false); } }
+            else if (e.key === 'Escape') setOpen(false);
           }}
           placeholder="Type to search policy type..."
           className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
                      bg-white dark:bg-gray-800 dark:text-gray-100
                      focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
         {open && filtered.length > 0 && (
-          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+          <div ref={listRef} className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
                           border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
                           max-h-48 overflow-y-auto animate-fade-in">
-            {filtered.map((s) => (
+            {filtered.map((s, i) => (
               <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectType(s)}
-                className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30
-                           text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors
-                           first:rounded-t-xl last:rounded-b-xl">
+                onMouseEnter={() => setHlIdx(i)}
+                className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 transition-colors first:rounded-t-xl last:rounded-b-xl
+                  ${i === hlIdx ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}>
                 <span>{INSURANCE_EMOJI[s] || '🛡️'}</span><span>{s}</span>
               </button>
             ))}
@@ -1358,13 +1359,17 @@ function InvestmentCard({ investment, onInstrumentChange, onFieldChange, onRemov
 }) {
   const [search, setSearch] = useState(investment.instrument);
   const [open, setOpen] = useState(false);
+  const [hlIdx, setHlIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const customInstruments = loadCustom('fa-custom-investment-instruments');
   const allSuggestions = [...INVESTMENT_SUGGESTIONS, ...customInstruments.filter((c) => !INVESTMENT_SUGGESTIONS.includes(c))];
   const filtered = allSuggestions.filter(
     (s) => s.toLowerCase().includes(search.toLowerCase()),
   );
+
+  useEffect(() => { setHlIdx(0); }, [filtered.length]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -1378,6 +1383,7 @@ function InvestmentCard({ investment, onInstrumentChange, onFieldChange, onRemov
   }, [search, investment.instrument, onInstrumentChange]);
 
   function selectInstrument(t: string) { setSearch(t); onInstrumentChange(t); setOpen(false); }
+  function scrollHL(idx: number) { const items = listRef.current?.children; if (items?.[idx]) (items[idx] as HTMLElement).scrollIntoView({ block: 'nearest' }); }
 
   const emoji = INVESTMENT_EMOJI[investment.instrument] || '📈';
   const tooltip = INVESTMENT_TOOLTIPS[investment.instrument];
@@ -1398,28 +1404,27 @@ function InvestmentCard({ investment, onInstrumentChange, onFieldChange, onRemov
             {tooltip && <InfoTooltip text={tooltip}><span /></InfoTooltip>}
           </div>
           <input type="text" value={search}
-            onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+            onChange={(e) => { setSearch(e.target.value); setOpen(true); setHlIdx(0); }}
             onFocus={() => setOpen(true)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (filtered.length > 0 && search) selectInstrument(filtered[0]);
-                else { onInstrumentChange(search); setOpen(false); }
-              }
+              if (e.key === 'ArrowDown' && open && filtered.length > 0) { e.preventDefault(); const n = (hlIdx + 1) % filtered.length; setHlIdx(n); scrollHL(n); }
+              else if (e.key === 'ArrowUp' && open && filtered.length > 0) { e.preventDefault(); const n = (hlIdx - 1 + filtered.length) % filtered.length; setHlIdx(n); scrollHL(n); }
+              else if (e.key === 'Enter') { e.preventDefault(); if (open && filtered.length > 0) selectInstrument(filtered[hlIdx] || filtered[0]); else { onInstrumentChange(search); setOpen(false); } }
+              else if (e.key === 'Escape') setOpen(false);
             }}
             placeholder="Type to search..."
             className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
                        bg-white dark:bg-gray-800 dark:text-gray-100
                        focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
           {open && filtered.length > 0 && (
-            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+            <div ref={listRef} className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
                             border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
                             max-h-48 overflow-y-auto animate-fade-in">
-              {filtered.map((s) => (
+              {filtered.map((s, i) => (
                 <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectInstrument(s)}
-                  className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30
-                             text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors
-                             first:rounded-t-xl last:rounded-b-xl">
+                  onMouseEnter={() => setHlIdx(i)}
+                  className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 transition-colors first:rounded-t-xl last:rounded-b-xl
+                    ${i === hlIdx ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}>
                   <span>{INVESTMENT_EMOJI[s] || '📈'}</span><span>{s}</span>
                 </button>
               ))}
@@ -1477,7 +1482,9 @@ function SchemeNameField({ instrument, value, onChange }: {
 }) {
   const [search, setSearch] = useState(value);
   const [open, setOpen] = useState(false);
+  const [hlIdx, setHlIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const schemes = SCHEME_SUGGESTIONS[instrument] || [];
   const hasSchemes = schemes.length > 0;
@@ -1486,6 +1493,7 @@ function SchemeNameField({ instrument, value, onChange }: {
     : [];
 
   useEffect(() => { setSearch(value); }, [value]);
+  useEffect(() => { setHlIdx(0); }, [filtered.length]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -1499,6 +1507,11 @@ function SchemeNameField({ instrument, value, onChange }: {
   }, [search, value, onChange]);
 
   function selectScheme(s: string) { setSearch(s); onChange(s); setOpen(false); }
+
+  function scrollToItem(idx: number) {
+    const items = listRef.current?.children;
+    if (items?.[idx]) (items[idx] as HTMLElement).scrollIntoView({ block: 'nearest' });
+  }
 
   const placeholder = hasSchemes
     ? `Type to search ${schemes.length}+ schemes...`
@@ -1515,28 +1528,33 @@ function SchemeNameField({ instrument, value, onChange }: {
           : 'Optional: Name of the specific investment.'}><span /></InfoTooltip>
       </div>
       <input type="text" value={search}
-        onChange={(e) => { setSearch(e.target.value); if (hasSchemes) setOpen(true); }}
+        onChange={(e) => { setSearch(e.target.value); if (hasSchemes) setOpen(true); setHlIdx(0); }}
         onFocus={() => { if (hasSchemes && search.length >= 1) setOpen(true); }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === 'ArrowDown' && open && filtered.length > 0) {
+            e.preventDefault(); const next = (hlIdx + 1) % filtered.length; setHlIdx(next); scrollToItem(next);
+          } else if (e.key === 'ArrowUp' && open && filtered.length > 0) {
+            e.preventDefault(); const prev = (hlIdx - 1 + filtered.length) % filtered.length; setHlIdx(prev); scrollToItem(prev);
+          } else if (e.key === 'Enter') {
             e.preventDefault();
-            if (filtered.length > 0 && search) selectScheme(filtered[0]);
+            if (open && filtered.length > 0) selectScheme(filtered[hlIdx] || filtered[0]);
             else { onChange(search); setOpen(false); }
-          }
+          } else if (e.key === 'Escape') { setOpen(false); }
         }}
         placeholder={placeholder}
         className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
                    bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100
                    focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
       {open && filtered.length > 0 && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+        <div ref={listRef} className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
                         border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
                         max-h-48 overflow-y-auto animate-fade-in">
-          {filtered.map((s) => (
+          {filtered.map((s, i) => (
             <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectScheme(s)}
-              className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30
-                         text-gray-700 dark:text-gray-300 transition-colors
-                         first:rounded-t-xl last:rounded-b-xl">
+              onMouseEnter={() => setHlIdx(i)}
+              className={`w-full text-left px-3 py-2.5 text-sm transition-colors
+                         first:rounded-t-xl last:rounded-b-xl
+                         ${i === hlIdx ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}>
               {s}
             </button>
           ))}
@@ -1608,13 +1626,17 @@ function DynamicRow({ item, usedCategories, suggestions, emojiMap, tooltipMap,
 }) {
   const [search, setSearch] = useState(item.category);
   const [open, setOpen] = useState(false);
+  const [hlIdx, setHlIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const customCats = loadCustom(storageKey);
   const allSuggestions = [...suggestions, ...customCats.filter((c) => !suggestions.includes(c))];
   const filtered = allSuggestions.filter(
     (s) => s.toLowerCase().includes(search.toLowerCase()) && (s === item.category || !usedCategories.includes(s)),
   );
+
+  useEffect(() => { setHlIdx(0); }, [filtered.length]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -1628,6 +1650,7 @@ function DynamicRow({ item, usedCategories, suggestions, emojiMap, tooltipMap,
   }, [search, item.category, onCategoryChange]);
 
   function selectCategory(cat: string) { setSearch(cat); onCategoryChange(cat); setOpen(false); }
+  function scrollHL(idx: number) { const items = listRef.current?.children; if (items?.[idx]) (items[idx] as HTMLElement).scrollIntoView({ block: 'nearest' }); }
 
   const emoji = emojiMap[item.category] || defaultEmoji;
   const tooltip = tooltipMap[item.category];
@@ -1641,18 +1664,23 @@ function DynamicRow({ item, usedCategories, suggestions, emojiMap, tooltipMap,
           {tooltip && <InfoTooltip text={tooltip}><span /></InfoTooltip>}
         </div>
         <input type="text" value={search}
-          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); setHlIdx(0); }}
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); if (filtered.length > 0 && search) selectCategory(filtered[0]); else { onCategoryChange(search); setOpen(false); } }
+            if (e.key === 'ArrowDown' && open && filtered.length > 0) { e.preventDefault(); const n = (hlIdx + 1) % filtered.length; setHlIdx(n); scrollHL(n); }
+            else if (e.key === 'ArrowUp' && open && filtered.length > 0) { e.preventDefault(); const n = (hlIdx - 1 + filtered.length) % filtered.length; setHlIdx(n); scrollHL(n); }
+            else if (e.key === 'Enter') { e.preventDefault(); if (open && filtered.length > 0) selectCategory(filtered[hlIdx] || filtered[0]); else { onCategoryChange(search); setOpen(false); } }
+            else if (e.key === 'Escape') setOpen(false);
           }}
           placeholder="Type to search..."
           className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
         {open && filtered.length > 0 && (
-          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl max-h-48 overflow-y-auto animate-fade-in">
-            {filtered.map((s) => (
+          <div ref={listRef} className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl max-h-48 overflow-y-auto animate-fade-in">
+            {filtered.map((s, i) => (
               <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectCategory(s)}
-                className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors first:rounded-t-xl last:rounded-b-xl">
+                onMouseEnter={() => setHlIdx(i)}
+                className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 transition-colors first:rounded-t-xl last:rounded-b-xl
+                  ${i === hlIdx ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}>
                 <span>{emojiMap[s] || defaultEmoji}</span><span>{s}</span>
               </button>
             ))}
