@@ -256,6 +256,8 @@ public class DashboardController {
         boolean hasTermLife = false;
         boolean hasHealth = false;
         int policyCount = 0;
+        List<String> lifePolicies = new ArrayList<>();
+        List<String> healthPolicies = new ArrayList<>();
 
         for (Map.Entry<String, Object> entry : insurance.entrySet()) {
             policyCount++;
@@ -266,19 +268,24 @@ public class DashboardController {
                 if (cover == null) cover = getBigDecimal(policy, "sumAssured");
                 if (cover == null) cover = BigDecimal.ZERO;
 
+                String person = getString(policy, "coveredPerson");
+                String personLabel = (person != null && !person.isEmpty()) ? " (" + person + ")" : "";
+
                 if (name.contains("term") || name.contains("life")) {
                     hasTermLife = true;
                     totalLifeCover = totalLifeCover.add(cover);
+                    lifePolicies.add("₹" + cover.toPlainString() + personLabel);
                 } else if (name.contains("health") || name.contains("medical")) {
                     hasHealth = true;
                     totalHealthCover = totalHealthCover.add(cover);
+                    healthPolicies.add("₹" + cover.toPlainString() + personLabel);
                 }
             }
         }
 
         List<String> actions = new ArrayList<>();
         List<String> details = new ArrayList<>();
-        details.add(policyCount + " policies");
+        details.add(policyCount + (policyCount == 1 ? " policy" : " policies"));
 
         if (!hasTermLife) {
             actions.add("Add term life insurance (recommended: 10-15× annual income)");
@@ -286,8 +293,9 @@ public class DashboardController {
             BigDecimal lifeMultiple = annualIncome.signum() > 0
                     ? totalLifeCover.divide(annualIncome, 1, RoundingMode.HALF_UP)
                     : BigDecimal.ZERO;
-            details.add("Life cover: ₹" + totalLifeCover.toPlainString()
-                    + " (" + lifeMultiple + "× annual income)");
+            details.add("Life: " + String.join(" + ", lifePolicies)
+                    + " = ₹" + totalLifeCover.toPlainString()
+                    + " (" + lifeMultiple + "× income)");
             if (lifeMultiple.compareTo(BigDecimal.TEN) < 0) {
                 actions.add("Life cover is " + lifeMultiple
                         + "× income — consider increasing to 10-15×");
@@ -297,7 +305,8 @@ public class DashboardController {
         if (!hasHealth) {
             actions.add("Add health insurance for family");
         } else {
-            details.add("Health cover: ₹" + totalHealthCover.toPlainString());
+            details.add("Health: " + String.join(" + ", healthPolicies)
+                    + " = ₹" + totalHealthCover.toPlainString());
             if (totalHealthCover.compareTo(BigDecimal.valueOf(500_000)) < 0) {
                 actions.add("Health cover below ₹5L — consider increasing");
             }

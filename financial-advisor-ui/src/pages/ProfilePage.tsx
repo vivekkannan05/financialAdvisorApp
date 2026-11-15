@@ -29,6 +29,7 @@ interface LoanItem {
 interface InsuranceItem {
   id: string;
   policyType: string;
+  coveredPerson: string;
   coverAmount: number;
   premium: number;
   premiumFrequency: string;
@@ -185,6 +186,8 @@ const INSURANCE_SUGGESTIONS = [
   'Motor Insurance (Car)', 'Motor Insurance (Two-Wheeler)', 'Home Insurance',
   'Travel Insurance', 'Endowment Plan', 'Child Plan (ULIP)', 'Other Insurance',
 ];
+
+const COVERED_PERSON_OPTIONS = ['Self', 'Spouse', 'Parents', 'Children', 'Family'];
 
 const INSURANCE_EMOJI: Record<string, string> = {
   'Term Life Insurance': '🛡️', 'Health Insurance (Individual)': '🏥',
@@ -507,6 +510,7 @@ function parseInsurance(raw: unknown, keyMap: Record<string, string>): Insurance
     return (raw as InsuranceItem[]).map((p) => ({
       id: p.id || uid(),
       policyType: String(p.policyType || ''),
+      coveredPerson: String(p.coveredPerson || 'Self'),
       coverAmount: Number(p.coverAmount) || 0,
       premium: Number(p.premium) || 0,
       premiumFrequency: capitalizeFrequency(String(p.premiumFrequency || 'Monthly')),
@@ -518,9 +522,14 @@ function parseInsurance(raw: unknown, keyMap: Record<string, string>): Insurance
   for (const [key, value] of Object.entries(obj)) {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       const pol = value as Record<string, unknown>;
+      const displayKey = keyMap[key] || key;
+      const sep = displayKey.indexOf(' — ');
+      const policyType = sep >= 0 ? displayKey.substring(0, sep) : displayKey;
+      const coveredPerson = sep >= 0 ? displayKey.substring(sep + 3) : String(pol.coveredPerson || 'Self');
       items.push({
         id: uid(),
-        policyType: keyMap[key] || key,
+        policyType,
+        coveredPerson,
         coverAmount: Number(pol.cover ?? pol.coverAmount ?? 0) || 0,
         premium: Number(pol.premium ?? 0) || 0,
         premiumFrequency: capitalizeFrequency(String(pol.premiumFrequency || 'Monthly')),
@@ -532,12 +541,12 @@ function parseInsurance(raw: unknown, keyMap: Record<string, string>): Insurance
     const termCover = Number(obj.termLifeCover ?? 0) || 0;
     const termPremium = Number(obj.termLifePremium ?? 0) || 0;
     if (termCover > 0 || termPremium > 0) {
-      items.push({ id: uid(), policyType: 'Term Life Insurance', coverAmount: termCover, premium: termPremium, premiumFrequency: 'Monthly' });
+      items.push({ id: uid(), policyType: 'Term Life Insurance', coveredPerson: 'Self', coverAmount: termCover, premium: termPremium, premiumFrequency: 'Monthly' });
     }
     const healthCover = Number(obj.healthCover ?? 0) || 0;
     const healthPremium = Number(obj.healthPremium ?? 0) || 0;
     if (healthCover > 0 || healthPremium > 0) {
-      items.push({ id: uid(), policyType: 'Health Insurance (Family Floater)', coverAmount: healthCover, premium: healthPremium, premiumFrequency: 'Monthly' });
+      items.push({ id: uid(), policyType: 'Health Insurance (Family Floater)', coveredPerson: 'Family', coverAmount: healthCover, premium: healthPremium, premiumFrequency: 'Monthly' });
     }
   }
   return items;
@@ -547,10 +556,13 @@ function insuranceToObject(policies: InsuranceItem[]): Record<string, Record<str
   const obj: Record<string, Record<string, unknown>> = {};
   policies.forEach((p) => {
     if (p.policyType.trim() && (p.coverAmount > 0 || p.premium > 0)) {
-      obj[p.policyType.trim()] = {
+      const person = p.coveredPerson || 'Self';
+      const key = `${p.policyType.trim()} — ${person}`;
+      obj[key] = {
         cover: p.coverAmount,
         premium: p.premium,
         premiumFrequency: p.premiumFrequency,
+        coveredPerson: person,
       };
       saveCustom('fa-custom-insurance-types', INSURANCE_SUGGESTIONS, p.policyType.trim());
     }
@@ -799,7 +811,7 @@ export default function ProfilePage() {
   function addInsurance() {
     setData((prev) => ({
       ...prev,
-      insurance: [...prev.insurance, { id: uid(), policyType: '', coverAmount: 0, premium: 0, premiumFrequency: 'Monthly' }],
+      insurance: [...prev.insurance, { id: uid(), policyType: '', coveredPerson: 'Self', coverAmount: 0, premium: 0, premiumFrequency: 'Monthly' }],
     }));
   }
   function removeInsurance(id: string) {
@@ -883,7 +895,6 @@ export default function ProfilePage() {
   const usedLoanTypes = data.liabilities.map((l) => l.loanType).filter(Boolean);
   const totalEmi = data.liabilities.reduce((sum, l) => sum + l.emi, 0);
   const totalOutstanding = data.liabilities.reduce((sum, l) => sum + l.outstanding, 0);
-  const usedInsuranceTypes = data.insurance.map((p) => p.policyType).filter(Boolean);
   const totalPremiumMonthly = data.insurance.reduce((sum, p) => sum + monthlyEquivalent(p.premium, p.premiumFrequency), 0);
   const totalCover = data.insurance.reduce((sum, p) => sum + p.coverAmount, 0);
   const totalInvestmentMonthly = data.investments.reduce((sum, inv) => sum + monthlyEquivalent(inv.amount, inv.frequency), 0);
@@ -1093,7 +1104,6 @@ export default function ProfilePage() {
                 <InsuranceCard
                   key={policy.id}
                   policy={policy}
-                  usedTypes={usedInsuranceTypes}
                   onTypeChange={(t) => updateInsuranceType(policy.id, t)}
                   onFieldChange={(f, v) => updateInsuranceField(policy.id, f, v)}
                   onRemove={() => removeInsurance(policy.id)}
@@ -1325,9 +1335,8 @@ function LoanCard({ loan, usedTypes, onTypeChange, onFieldChange, onRemove }: {
 /* ══════════════════════════════════════════════════════════════
    InsuranceCard — autocomplete policy type + cover/premium/frequency + delete
    ══════════════════════════════════════════════════════════════ */
-function InsuranceCard({ policy, usedTypes, onTypeChange, onFieldChange, onRemove }: {
+function InsuranceCard({ policy, onTypeChange, onFieldChange, onRemove }: {
   policy: InsuranceItem;
-  usedTypes: string[];
   onTypeChange: (t: string) => void;
   onFieldChange: (field: string, value: number | string) => void;
   onRemove: () => void;
@@ -1341,7 +1350,7 @@ function InsuranceCard({ policy, usedTypes, onTypeChange, onFieldChange, onRemov
   const customTypes = loadCustom('fa-custom-insurance-types');
   const allSuggestions = [...INSURANCE_SUGGESTIONS, ...customTypes.filter((c) => !INSURANCE_SUGGESTIONS.includes(c))];
   const filtered = allSuggestions.filter(
-    (s) => s.toLowerCase().includes(search.toLowerCase()) && (s === policy.policyType || !usedTypes.includes(s)),
+    (s) => s.toLowerCase().includes(search.toLowerCase()),
   );
 
   useEffect(() => { setHlIdx(0); }, [filtered.length]);
@@ -1412,7 +1421,19 @@ function InsuranceCard({ policy, usedTypes, onTypeChange, onFieldChange, onRemov
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div>
+          <div className="flex items-center gap-1 mb-1.5">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">👤 Covered Person</label>
+            <InfoTooltip text="Who is covered under this policy? Self, Spouse, Parents, Children, or Family (for floater plans)."><span /></InfoTooltip>
+          </div>
+          <select value={policy.coveredPerson || 'Self'} onChange={(e) => onFieldChange('coveredPerson', e.target.value)}
+            className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                       bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100
+                       focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all">
+            {COVERED_PERSON_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
         <NumberField label="Cover Amount" value={policy.coverAmount} prefix="₹"
           onChange={(v) => onFieldChange('coverAmount', v)}
           tooltip="How much the policy pays out (sum insured). Term life: 10-15x annual income. Health: ₹10-20 lakh." />
