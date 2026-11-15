@@ -5,12 +5,25 @@ import DimensionCard from '@/components/DimensionCard';
 import InfoTooltip from '@/components/InfoTooltip';
 import type { DashboardResponse } from '@/types/api';
 
+function trimTrailingZeros(n: string): string {
+  return n.includes('.') ? n.replace(/\.?0+$/, '') : n;
+}
+
 function formatInr(amount: number): string {
   const abs = Math.abs(amount);
   const sign = amount < 0 ? '-' : '';
-  if (abs >= 10_000_000) return `${sign}₹${(abs / 10_000_000).toFixed(2)} Cr`;
-  if (abs >= 100_000) return `${sign}₹${(abs / 100_000).toFixed(2)} L`;
-  return `${sign}₹${abs.toLocaleString('en-IN')}`;
+  if (abs >= 10_000_000) return `${sign}₹${trimTrailingZeros((abs / 10_000_000).toFixed(2))} Cr`;
+  if (abs >= 100_000) return `${sign}₹${trimTrailingZeros((abs / 100_000).toFixed(2))} L`;
+  if (abs >= 1_000) return `${sign}₹${trimTrailingZeros((abs / 1_000).toFixed(1))}K`;
+  return `${sign}₹${Math.round(abs).toLocaleString('en-IN')}`;
+}
+
+function formatInrInText(text: string): string {
+  return text.replace(/₹[\d,]+(?:\.\d+)?/g, (match) => {
+    const num = parseFloat(match.replace(/[₹,]/g, ''));
+    if (isNaN(num)) return match;
+    return formatInr(num);
+  });
 }
 
 function getHealthEmoji(score: number): string {
@@ -171,7 +184,11 @@ export default function DashboardPage() {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {dashboard.dimensions.map((dim) => (
-            <DimensionCard key={dim.index} dim={dim} />
+            <DimensionCard key={dim.index} dim={{
+              ...dim,
+              description: formatInrInText(dim.description),
+              actions: dim.actions.map(formatInrInText),
+            }} />
           ))}
         </div>
       </div>
