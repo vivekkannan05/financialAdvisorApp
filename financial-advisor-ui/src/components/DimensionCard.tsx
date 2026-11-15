@@ -2,21 +2,21 @@ import type { DimensionStatus } from '@/types/api';
 import InfoTooltip from './InfoTooltip';
 
 const statusConfig: Record<string, { bg: string; border: string; text: string; badge: string; emoji: string }> = {
-  healthy:          { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', badge: 'bg-emerald-200 text-emerald-800', emoji: '✅' },
-  'on-track':       { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', badge: 'bg-emerald-200 text-emerald-800', emoji: '✅' },
-  'debt-free':      { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', badge: 'bg-emerald-200 text-emerald-800', emoji: '🎉' },
-  clear:            { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', badge: 'bg-emerald-200 text-emerald-800', emoji: '✅' },
-  diversified:      { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', badge: 'bg-emerald-200 text-emerald-800', emoji: '👍' },
-  manageable:       { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   badge: 'bg-amber-200 text-amber-800',   emoji: '⚡' },
-  review:           { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   badge: 'bg-amber-200 text-amber-800',   emoji: '👀' },
-  'near-target':    { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   badge: 'bg-amber-200 text-amber-800',   emoji: '🏃' },
-  none:             { bg: 'bg-gray-50',     border: 'border-gray-200',    text: 'text-gray-600',    badge: 'bg-gray-200 text-gray-700',     emoji: '➖' },
-  'not-set':        { bg: 'bg-gray-50',     border: 'border-gray-200',    text: 'text-gray-600',    badge: 'bg-gray-200 text-gray-700',     emoji: '❓' },
-  concentrated:     { bg: 'bg-orange-50',   border: 'border-orange-200',  text: 'text-orange-800',  badge: 'bg-orange-200 text-orange-800', emoji: '⚠️' },
-  'at-risk':        { bg: 'bg-red-50',      border: 'border-red-200',     text: 'text-red-800',     badge: 'bg-red-200 text-red-800',       emoji: '🚨' },
-  critical:         { bg: 'bg-red-50',      border: 'border-red-200',     text: 'text-red-800',     badge: 'bg-red-200 text-red-800',       emoji: '🔴' },
-  high:             { bg: 'bg-red-50',      border: 'border-red-200',     text: 'text-red-800',     badge: 'bg-red-200 text-red-800',       emoji: '📛' },
-  'attention-needed': { bg: 'bg-red-50',    border: 'border-red-200',     text: 'text-red-800',     badge: 'bg-red-200 text-red-800',       emoji: '⚠️' },
+  healthy:          { bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-800 dark:text-emerald-300', badge: 'bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300', emoji: '✅' },
+  'on-track':       { bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-800 dark:text-emerald-300', badge: 'bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300', emoji: '✅' },
+  'debt-free':      { bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-800 dark:text-emerald-300', badge: 'bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300', emoji: '🎉' },
+  clear:            { bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-800 dark:text-emerald-300', badge: 'bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300', emoji: '✅' },
+  diversified:      { bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-800 dark:text-emerald-300', badge: 'bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300', emoji: '👍' },
+  manageable:       { bg: 'bg-amber-50 dark:bg-amber-950/40',     border: 'border-amber-200 dark:border-amber-800',     text: 'text-amber-800 dark:text-amber-300',     badge: 'bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-300',     emoji: '⚡' },
+  review:           { bg: 'bg-amber-50 dark:bg-amber-950/40',     border: 'border-amber-200 dark:border-amber-800',     text: 'text-amber-800 dark:text-amber-300',     badge: 'bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-300',     emoji: '👀' },
+  'near-target':    { bg: 'bg-amber-50 dark:bg-amber-950/40',     border: 'border-amber-200 dark:border-amber-800',     text: 'text-amber-800 dark:text-amber-300',     badge: 'bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-300',     emoji: '🏃' },
+  none:             { bg: 'bg-gray-50 dark:bg-gray-800/40',        border: 'border-gray-200 dark:border-gray-700',       text: 'text-gray-600 dark:text-gray-400',       badge: 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300',       emoji: '➖' },
+  'not-set':        { bg: 'bg-gray-50 dark:bg-gray-800/40',        border: 'border-gray-200 dark:border-gray-700',       text: 'text-gray-600 dark:text-gray-400',       badge: 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300',       emoji: '❓' },
+  concentrated:     { bg: 'bg-orange-50 dark:bg-orange-950/40',    border: 'border-orange-200 dark:border-orange-800',   text: 'text-orange-800 dark:text-orange-300',   badge: 'bg-orange-200 dark:bg-orange-900 text-orange-800 dark:text-orange-300', emoji: '⚠️' },
+  'at-risk':        { bg: 'bg-red-50 dark:bg-red-950/40',          border: 'border-red-200 dark:border-red-800',         text: 'text-red-800 dark:text-red-300',         badge: 'bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-300',         emoji: '🚨' },
+  critical:         { bg: 'bg-red-50 dark:bg-red-950/40',          border: 'border-red-200 dark:border-red-800',         text: 'text-red-800 dark:text-red-300',         badge: 'bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-300',         emoji: '🔴' },
+  high:             { bg: 'bg-red-50 dark:bg-red-950/40',          border: 'border-red-200 dark:border-red-800',         text: 'text-red-800 dark:text-red-300',         badge: 'bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-300',         emoji: '📛' },
+  'attention-needed': { bg: 'bg-red-50 dark:bg-red-950/40',        border: 'border-red-200 dark:border-red-800',         text: 'text-red-800 dark:text-red-300',         badge: 'bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-300',         emoji: '⚠️' },
 };
 
 const dimensionMeta: Record<number, { icon: string; friendlyName: string; tooltip: string }> = {
@@ -66,7 +66,7 @@ export default function DimensionCard({ dim }: { dim: DimensionStatus }) {
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="text-2xl shrink-0">{meta.icon}</span>
           <InfoTooltip text={meta.tooltip}>
-            <h3 className="font-bold text-sm text-gray-800 leading-tight">{meta.friendlyName}</h3>
+            <h3 className="font-bold text-sm text-gray-800 dark:text-gray-100 leading-tight">{meta.friendlyName}</h3>
           </InfoTooltip>
         </div>
         <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${cfg.badge} flex items-center gap-1`}>
@@ -74,18 +74,18 @@ export default function DimensionCard({ dim }: { dim: DimensionStatus }) {
         </span>
       </div>
 
-      {/* Description in simple words */}
+      {/* Description */}
       <p className={`mt-3 text-sm ${cfg.text} leading-relaxed`}>
         {dim.description}
       </p>
 
       {/* Action items */}
       {dim.actions.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-200/60 space-y-1.5">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">What to do:</p>
+        <div className="mt-3 pt-3 border-t border-gray-200/60 dark:border-gray-700/60 space-y-1.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">What to do:</p>
           {dim.actions.map((action, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs text-gray-600">
-              <span className="mt-0.5 text-indigo-500">👉</span>
+            <div key={i} className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
+              <span className="mt-0.5 text-indigo-500 dark:text-indigo-400">👉</span>
               <span>{action}</span>
             </div>
           ))}

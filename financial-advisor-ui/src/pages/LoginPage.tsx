@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function LoginPage() {
   const { login, loading, error } = useAuth();
@@ -19,7 +20,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50
+                    dark:from-gray-900 dark:via-gray-950 dark:to-indigo-950
+                    flex items-center justify-center px-4 transition-colors duration-300">
+      {/* Theme toggle — top right */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle size="sm" />
+      </div>
       <div className="w-full max-w-md">
         {/* Welcome header */}
         <div className="text-center mb-8">
@@ -27,8 +34,8 @@ export default function LoginPage() {
                           flex items-center justify-center text-4xl shadow-lg mb-5">
             💰
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Welcome to Money Guide</h1>
-          <p className="text-gray-500 mt-2 text-base leading-relaxed">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Welcome to Money Guide</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-2 text-base leading-relaxed">
             Your personal assistant to understand,<br />manage, and grow your money 🌱
           </p>
         </div>
@@ -36,14 +43,15 @@ export default function LoginPage() {
         {/* Login card */}
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 space-y-5"
+          className="bg-white dark:bg-gray-800/80 rounded-2xl shadow-xl border border-gray-100
+                     dark:border-gray-700 p-8 space-y-5 backdrop-blur"
         >
           <div className="text-center mb-2">
-            <p className="text-sm text-gray-500">Sign in to see your financial dashboard</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Sign in to see your financial dashboard</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               👤 Username
             </label>
             <input
@@ -51,15 +59,15 @@ export default function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2
-                         focus:ring-indigo-400 focus:border-indigo-400 outline-none text-sm
-                         bg-gray-50/50 transition-all"
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl
+                         focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none
+                         text-sm bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100 transition-all"
               placeholder="Type your username"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               🔒 Password
             </label>
             <input
@@ -67,15 +75,16 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2
-                         focus:ring-indigo-400 focus:border-indigo-400 outline-none text-sm
-                         bg-gray-50/50 transition-all"
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl
+                         focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none
+                         text-sm bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100 transition-all"
               placeholder="Type your password"
             />
           </div>
 
           {error && (
-            <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
+            <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50
+                           dark:bg-red-950/40 px-4 py-3 rounded-xl">
               <span className="mt-0.5">❌</span>
               <span>{error}</span>
             </div>
@@ -106,9 +115,10 @@ export default function LoginPage() {
             { icon: '🎯', label: 'Set Goals' },
             { icon: '💬', label: 'Get Advice' },
           ].map((f) => (
-            <div key={f.label} className="bg-white/60 backdrop-blur rounded-xl p-3 border border-gray-100">
+            <div key={f.label} className="bg-white/60 dark:bg-gray-800/60 backdrop-blur rounded-xl p-3
+                                        border border-gray-100 dark:border-gray-700">
               <span className="text-2xl">{f.icon}</span>
-              <p className="text-[11px] text-gray-500 mt-1 font-medium">{f.label}</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 font-medium">{f.label}</p>
             </div>
           ))}
         </div>

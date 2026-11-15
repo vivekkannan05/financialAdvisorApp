@@ -46,9 +46,7 @@ export default function ProfilePage() {
         setProfile(p);
         setData(mergeData(defaultData, p.data as Partial<ProfileData>));
       })
-      .catch(() => {
-        // No profile yet — use defaults
-      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -122,7 +120,7 @@ export default function ProfilePage() {
     return (
       <div className="p-8 flex flex-col items-center justify-center h-full gap-4">
         <div className="text-5xl animate-bounce">📝</div>
-        <p className="text-gray-400 text-sm animate-pulse">Loading your profile...</p>
+        <p className="text-gray-400 dark:text-gray-500 text-sm animate-pulse">Loading your profile...</p>
       </div>
     );
   }
@@ -143,10 +141,10 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
             📝 My Money Information
           </h2>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
             Fill in your details below. Don't worry — you can always change them later!
           </p>
         </div>
@@ -163,12 +161,14 @@ export default function ProfilePage() {
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+        <div className="flex items-start gap-2 bg-red-50 dark:bg-red-950/40 border border-red-200
+                        dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 text-sm">
           <span>❌</span> {error}
         </div>
       )}
       {success && (
-        <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm">
+        <div className="flex items-start gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200
+                        dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl px-4 py-3 text-sm">
           <span>✅</span> {success}
         </div>
       )}
@@ -181,8 +181,8 @@ export default function ProfilePage() {
             onClick={() => setActiveSection(s.id)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               activeSection === s.id
-                ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-300 shadow-sm'
-                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 border-2 border-indigo-300 dark:border-indigo-700 shadow-sm'
+                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
           >
             {s.icon} {s.label}
@@ -191,7 +191,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Form sections */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
+      <div className="bg-white dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 md:p-8">
         {activeSection === 'personal' && (
           <FormSection title="About You" hint="Basic info that helps us give better advice" icon="👤">
             <FormRow>
@@ -208,7 +208,7 @@ export default function ProfilePage() {
             </FormRow>
             <div>
               <div className="flex items-center gap-1 mb-1.5">
-                <label className="text-sm font-medium text-gray-700">Risk Comfort Level</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Risk Comfort Level</label>
                 <InfoTooltip text="How comfortable are you with your investments going up and down? Conservative = safe but slow growth. Aggressive = faster growth but can lose money temporarily.">
                   <span />
                 </InfoTooltip>
@@ -219,10 +219,10 @@ export default function ProfilePage() {
                     onClick={() => updateField('personal', 'riskTolerance', r)}
                     className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                       data.personal.riskTolerance === r
-                        ? r === 'CONSERVATIVE' ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                          : r === 'MODERATE' ? 'bg-amber-100 text-amber-700 border-2 border-amber-300'
-                          : 'bg-red-100 text-red-700 border-2 border-red-300'
-                        : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+                        ? r === 'CONSERVATIVE' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border-2 border-blue-300 dark:border-blue-700'
+                          : r === 'MODERATE' ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 border-2 border-amber-300 dark:border-amber-700'
+                          : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 border-2 border-red-300 dark:border-red-700'
+                        : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
                     }`}>
                     {r === 'CONSERVATIVE' ? '🐢 Safe & Slow' : r === 'MODERATE' ? '⚖️ Balanced' : '🚀 Risky & Fast'}
                   </button>
@@ -240,8 +240,8 @@ export default function ProfilePage() {
               <NumberField label="Other Income" value={data.income.otherIncome} prefix="₹" onChange={(v) => updateField('income', 'otherIncome', v)}
                 tooltip="Rent from property, freelance work, dividends, interest — any extra money you earn regularly each month." />
             </FormRow>
-            <div className="mt-4 p-4 bg-indigo-50 rounded-xl">
-              <p className="text-sm text-indigo-700">
+            <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl">
+              <p className="text-sm text-indigo-700 dark:text-indigo-400">
                 💡 <strong>Total Monthly Income:</strong> ₹{(data.income.monthlySalary + data.income.otherIncome).toLocaleString('en-IN')}
               </p>
             </div>
@@ -264,8 +264,8 @@ export default function ProfilePage() {
               <NumberField label="📦 Other Expenses" value={data.expenses.other} prefix="₹" onChange={(v) => updateField('expenses', 'other', v)}
                 tooltip="Anything else — medical, education, clothes, gifts, personal care. If it doesn't fit above, put it here." />
             </div>
-            <div className="mt-4 p-4 bg-orange-50 rounded-xl">
-              <p className="text-sm text-orange-700">
+            <div className="mt-4 p-4 bg-orange-50 dark:bg-orange-950/40 rounded-xl">
+              <p className="text-sm text-orange-700 dark:text-orange-400">
                 💡 <strong>Total Monthly Expenses:</strong> ₹{Object.values(data.expenses).reduce((a, b) => a + b, 0).toLocaleString('en-IN')}
               </p>
             </div>
@@ -290,8 +290,8 @@ export default function ProfilePage() {
               <NumberField label="✨ Gold" value={data.assets.gold} prefix="₹" onChange={(v) => updateField('assets', 'gold', v)}
                 tooltip="Value of gold you own — jewellery, coins, digital gold, Sovereign Gold Bonds. Use today's market price." />
             </div>
-            <div className="mt-4 p-4 bg-emerald-50 rounded-xl">
-              <p className="text-sm text-emerald-700">
+            <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl">
+              <p className="text-sm text-emerald-700 dark:text-emerald-400">
                 💡 <strong>Total Savings:</strong> ₹{Object.values(data.assets).reduce((a, b) => a + b, 0).toLocaleString('en-IN')}
               </p>
             </div>
@@ -302,7 +302,7 @@ export default function ProfilePage() {
           <FormSection title="Your Loans" hint="Any money you owe — EMIs, outstanding amounts. Leave 0 if you don't have a loan." icon="💳">
             <LoanSection title="🏠 Home Loan" data={data.liabilities.homeLoan}
               onChange={(field, val) => updateField('liabilities', field, val, 'homeLoan')} />
-            <div className="border-t border-gray-100 my-6" />
+            <div className="border-t border-gray-100 dark:border-gray-700 my-6" />
             <LoanSection title="🚗 Car Loan" data={data.liabilities.carLoan}
               onChange={(field, val) => updateField('liabilities', field, val, 'carLoan')} />
           </FormSection>
@@ -339,39 +339,44 @@ export default function ProfilePage() {
         {activeSection === 'goals' && (
           <FormSection title="Your Money Goals" hint="What are you saving for? Add all your dreams here!" icon="🎯">
             {data.goals.length === 0 && (
-              <div className="text-center py-8 text-gray-400">
+              <div className="text-center py-8 text-gray-400 dark:text-gray-500">
                 <span className="text-4xl block mb-3">🎯</span>
                 <p className="text-sm">No goals yet! Add what you're saving for.</p>
               </div>
             )}
             {data.goals.map((goal, i) => (
-              <div key={i} className="p-4 bg-gray-50 rounded-xl mb-4 relative">
+              <div key={i} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl mb-4 relative">
                 <button onClick={() => removeGoal(i)}
-                  className="absolute top-3 right-3 w-7 h-7 rounded-full bg-red-100 text-red-600
-                             text-xs font-bold flex items-center justify-center hover:bg-red-200 transition-colors">
+                  className="absolute top-3 right-3 w-7 h-7 rounded-full bg-red-100 dark:bg-red-900/50
+                             text-red-600 dark:text-red-400 text-xs font-bold flex items-center justify-center
+                             hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors">
                   ✕
                 </button>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Goal Name</label>
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Goal Name</label>
                     <input type="text" value={goal.name} onChange={(e) => updateGoal(i, 'name', e.target.value)}
                       placeholder="e.g. Buy a House, Child's Education"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white" />
+                      className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                                 bg-white dark:bg-gray-800 dark:text-gray-100" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Target Amount (₹)</label>
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Target Amount (₹)</label>
                     <input type="number" value={goal.targetAmount} onChange={(e) => updateGoal(i, 'targetAmount', Number(e.target.value))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white" />
+                      className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                                 bg-white dark:bg-gray-800 dark:text-gray-100" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Target Year</label>
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Target Year</label>
                     <input type="number" value={goal.targetYear} onChange={(e) => updateGoal(i, 'targetYear', Number(e.target.value))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white" />
+                      className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                                 bg-white dark:bg-gray-800 dark:text-gray-100" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Priority</label>
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Priority</label>
                     <select value={goal.priority} onChange={(e) => updateGoal(i, 'priority', e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white">
+                      className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                                 bg-white dark:bg-gray-800 dark:text-gray-100">
                       <option value="HIGH">🔴 High — Must achieve</option>
                       <option value="MEDIUM">🟡 Medium — Important</option>
                       <option value="LOW">🟢 Low — Nice to have</option>
@@ -381,8 +386,10 @@ export default function ProfilePage() {
               </div>
             ))}
             <button onClick={addGoal} type="button"
-              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm
-                         text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50/50
+              className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm
+                         text-gray-500 dark:text-gray-400 hover:border-indigo-400 dark:hover:border-indigo-600
+                         hover:text-indigo-600 dark:hover:text-indigo-400
+                         hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30
                          transition-all font-medium">
               ➕ Add a New Goal
             </button>
@@ -397,10 +404,10 @@ function FormSection({ title, hint, icon, children }: { title: string; hint: str
   return (
     <div>
       <div className="mb-6">
-        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
           {icon} {title}
         </h3>
-        <p className="text-sm text-gray-400 mt-0.5">{hint}</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{hint}</p>
       </div>
       <div className="space-y-4">{children}</div>
     </div>
@@ -418,21 +425,21 @@ function NumberField({ label, value, onChange, tooltip, prefix, placeholder }: {
   return (
     <div>
       <div className="flex items-center gap-1 mb-1.5">
-        <label className="text-sm font-medium text-gray-700">{label}</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
         <InfoTooltip text={tooltip}><span /></InfoTooltip>
       </div>
       <div className="relative">
         {prefix && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">{prefix}</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500 font-medium">{prefix}</span>
         )}
         <input
           type="number"
           value={value || ''}
           onChange={(e) => onChange(Number(e.target.value) || 0)}
           placeholder={placeholder || '0'}
-          className={`w-full ${prefix ? 'pl-8' : 'pl-3'} pr-3 py-2.5 border border-gray-200 rounded-xl text-sm
-                     focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none bg-gray-50/50
-                     transition-all`}
+          className={`w-full ${prefix ? 'pl-8' : 'pl-3'} pr-3 py-2.5 border border-gray-200 dark:border-gray-600
+                     rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none
+                     bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100 transition-all`}
         />
       </div>
     </div>
@@ -445,7 +452,7 @@ function TextField({ label, value, onChange, tooltip, placeholder }: {
   return (
     <div>
       <div className="flex items-center gap-1 mb-1.5">
-        <label className="text-sm font-medium text-gray-700">{label}</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
         <InfoTooltip text={tooltip}><span /></InfoTooltip>
       </div>
       <input
@@ -453,8 +460,9 @@ function TextField({ label, value, onChange, tooltip, placeholder }: {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm
-                   focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none bg-gray-50/50 transition-all"
+        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                   focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none
+                   bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100 transition-all"
       />
     </div>
   );
@@ -467,7 +475,7 @@ function LoanSection({ title, data, onChange }: {
 }) {
   return (
     <div>
-      <h4 className="text-sm font-bold text-gray-700 mb-3">{title}</h4>
+      <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">{title}</h4>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <NumberField label="Outstanding Amount" value={data.outstanding} prefix="₹" onChange={(v) => onChange('outstanding', v)}
           tooltip="How much you still owe on this loan. Check your loan statement or banking app for the current outstanding principal." />
