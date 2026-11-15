@@ -151,8 +151,45 @@ V1's DynamoDB single-table design is optimal for the current user-scoped access 
 - Number formatting per locale (though Indian system is default)
 
 
+## 10. Multi-Agent Specialist Orchestration (Level 3)
+
+**Priority:** High  
+**Identified during:** AI advisor audit + ChatGPT skill integration  
+
+V1 upgraded the system prompt with the Holistic Financial Advisor skill frameworks (Level 1).
+V1 also added specialist tool functions for Stock, MF, and Tax analysis (Level 2).
+Level 3 is the full production-grade multi-agent orchestration.
+
+### V2 Scope
+- **Structured handoff protocol**: main advisor prepares JSON payload (goal, horizon, risk budget, constraints) before calling a specialist
+- **Specialist agents**: each runs with its own system prompt and domain-specific reasoning
+  - HM Bulls (stocks/IPOs) — business quality, valuation, market context, risk
+  - Mutual Fund Mentor — goal-fit, rolling returns, overlap, cost, portfolio review
+  - Kanakupillai (tax) — residential status, DTAA, capital gains, FEMA
+- **Final recommendation ownership**: specialist outputs are inputs — the main advisor can override (e.g., "stock is attractive but purchase weakens liquidity")
+- **Handoff contract validation**: verify specialist responses match the expected schema
+- **Conversation memory across handoffs**: specialist context carries back to the main conversation
+- **Model upgrade path**: consider larger model (70B) or hosted API for complex multi-agent reasoning
+- **Behavior regression tests**: 10 test scenarios from `behavior-tests.md` as automated quality gates
+
+### V1 Status (implemented)
+- Level 1: System prompt upgraded with full Financial Advisor skill (decision hierarchy, gates, risk framework, surplus cash logic, mortgage prepay logic, insurance logic, stress testing reasoning, product-switch discipline, structured recommendation format)
+- Level 2: Specialist tool functions (consultStockSpecialist, consultMFSpecialist, consultTaxSpecialist)
+- Skill reference docs saved in `docs/skills/`
+
+### Reference Docs
+- `docs/skills/financial-advisor-skill.md` — full holistic advisor skill
+- `docs/skills/references/tool-contract.md` — intended tool API contract
+- `docs/skills/references/specialist-handoffs.md` — handoff protocol
+- `docs/skills/references/profile-model.md` — canonical profile model
+- `docs/skills/references/behavior-tests.md` — 10 regression test scenarios
+- `docs/skills/hm-bulls-stock-specialist.md` — stock specialist handoff contract
+- `docs/skills/mutual-fund-mentor-specialist.md` — MF specialist handoff contract
+- `docs/skills/kanakupillai-tax-specialist.md` — tax specialist handoff contract
+
+
 ---
 
 *Last updated: 15 November 2026*  
 *Items are ordered by priority, not implementation sequence.*  
-*9 items total — last added: #8 (DB strategy evaluation).*
+*10 items total — last added: #10 (multi-agent specialist orchestration).*
