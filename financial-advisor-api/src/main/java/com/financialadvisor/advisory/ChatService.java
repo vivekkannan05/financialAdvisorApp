@@ -1,13 +1,13 @@
 package com.financialadvisor.advisory;
 
 import com.financialadvisor.exception.AppException;
-import com.financialadvisor.exception.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -16,8 +16,10 @@ import java.util.Map;
  * Flow:
  * 1. Prompt guard screens input (NFR-1.6)
  * 2. Check Ollama availability (NFR-3.8)
- * 3. If available: invoke ChatClient with tools → validate output (FR-12.4)
- * 4. If unavailable: return rule-engine-only fallback (NFR-3.3)
+ * 3. Build conversation context (last 10 exchanges from memory)
+ * 4. If available: invoke ChatClient with tools → validate output (FR-12.4)
+ * 5. Store exchange in conversation memory
+ * 6. If unavailable: return rule-engine-only fallback (NFR-3.3)
  */
 @Service
 public class ChatService {
@@ -29,12 +31,14 @@ public class ChatService {
     private final OllamaAvailabilityService ollamaAvailability;
     private final LlmOutputValidator validator;
     private final FinancialAdvisoryTools tools;
+    private final ConversationMemory conversationMemory;
 
     public ChatService(ChatClient.Builder chatClientBuilder,
                        FinancialAdvisoryTools advisoryTools,
                        PromptGuardService promptGuard,
                        OllamaAvailabilityService ollamaAvailability,
-                       LlmOutputValidator validator) {
+                       LlmOutputValidator validator,
+                       ConversationMemory conversationMemory) {
         this.chatClient = chatClientBuilder
                 .defaultSystem(AdvisorySystemPrompt.PERSONA)
                 .defaultTools(advisoryTools)
@@ -43,6 +47,7 @@ public class ChatService {
         this.ollamaAvailability = ollamaAvailability;
         this.validator = validator;
         this.tools = advisoryTools;
+        this.conversationMemory = conversationMemory;
     }
 
     /**
@@ -67,7 +72,7 @@ public class ChatService {
         }
 
         try {
-            String contextualMessage = "User ID: " + userId + "\nUser question: " + message;
+            String contextualMessage = buildContextualMessage(userId, message);
 
             String aiResponse = chatClient.prompt()
                     .user(contextualMessage)
@@ -78,8 +83,11 @@ public class ChatService {
 
             LlmOutputValidator.ValidationResult validation = validator.validate(aiResponse, engineData);
 
-            log.info("Chat completed for user {} — {} validation warnings",
-                    userId, validation.warnings().size());
+            conversationMemory.addExchange(userId, message, validation.validatedResponse());
+
+            log.info("Chat completed for user {} — {} validation warnings, {} conversation pairs",
+                    userId, validation.warnings().size(),
+                    conversationMemory.getHistory(userId).size() / 2);
 
             return ChatResponse.aiResponse(
                     validation.validatedResponse(),
@@ -92,6 +100,40 @@ public class ChatService {
                     userId, e.getMessage());
             return buildFallbackResponse(userId, message);
         }
+    }
+
+    /**
+     * Builds the full contextual message including conversation history.
+     * Format: previous exchanges as "User: ... / Advisor: ..." followed by the new question.
+     */
+    private String buildContextualMessage(String userId, String currentMessage) {
+        List<ConversationMemory.Message> history = conversationMemory.getHistory(userId);
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("User ID: ").append(userId).append("\n\n");
+
+        try {
+            String profileSummary = tools.generateProfileSummary(userId);
+            sb.append(profileSummary).append("\n\n");
+        } catch (Exception e) {
+            log.warn("Could not pre-load profile summary: {}", e.getMessage());
+        }
+
+        if (!history.isEmpty()) {
+            sb.append("=== CONVERSATION HISTORY (for context) ===\n");
+            for (ConversationMemory.Message msg : history) {
+                String label = "user".equals(msg.role()) ? "User" : "Advisor";
+                String content = msg.content();
+                if (content.length() > 500) {
+                    content = content.substring(0, 500) + "... [truncated]";
+                }
+                sb.append(label).append(": ").append(content).append("\n\n");
+            }
+            sb.append("=== END HISTORY ===\n\n");
+        }
+
+        sb.append("User's current question: ").append(currentMessage);
+        return sb.toString();
     }
 
     /**

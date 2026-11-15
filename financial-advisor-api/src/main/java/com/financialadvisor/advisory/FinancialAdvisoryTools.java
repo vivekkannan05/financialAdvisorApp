@@ -13,7 +13,10 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
+import com.financialadvisor.math.FinancialMathUtil;
+
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -243,6 +246,163 @@ public class FinancialAdvisoryTools {
         response.put("interestSaved", comparison.scenarioB().totalInterestSaved().toPlainString());
 
         return response;
+    }
+
+    @Tool(description = "Get the user's insurance coverage details including all policies, " +
+            "covered persons, types (term life, health, etc.), cover amounts, and premiums. " +
+            "Call this when the user asks about insurance, protection, coverage gaps, or policy adequacy.")
+    public Map<String, Object> getInsuranceSummary(
+            @ToolParam(description = "The user's ID") String userId) {
+        log.info("Tool call: getInsuranceSummary for user {}", userId);
+        Map<String, Object> profileData = loadProfileData(userId);
+
+        Map<String, Object> insurance = getSection(profileData, "insurance");
+        Map<String, Object> income = getSection(profileData, "income");
+        BigDecimal annualIncome = FinancialMathUtil.toBigDecimal(income.get("monthlySalary"))
+                .multiply(BigDecimal.valueOf(12));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("annualIncome", annualIncome.toPlainString());
+
+        List<Map<String, Object>> policies = new ArrayList<>();
+        BigDecimal totalTermCover = BigDecimal.ZERO;
+        BigDecimal totalHealthCover = BigDecimal.ZERO;
+        BigDecimal totalAnnualPremium = BigDecimal.ZERO;
+
+        for (Map.Entry<String, Object> entry : insurance.entrySet()) {
+            if (entry.getValue() instanceof Map<?, ?> policyMap) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> policy = (Map<String, Object>) policyMap;
+                Map<String, Object> policyInfo = new LinkedHashMap<>();
+
+                String policyKey = entry.getKey();
+                String policyType = (String) policy.getOrDefault("type", "unknown");
+                String coveredPerson = (String) policy.getOrDefault("coveredPerson", "Self");
+                BigDecimal cover = FinancialMathUtil.toBigDecimal(policy.get("cover"));
+                BigDecimal premium = FinancialMathUtil.toBigDecimal(
+                        policy.containsKey("premiumYearly") ? policy.get("premiumYearly")
+                                : policy.get("premium"));
+
+                policyInfo.put("policyKey", policyKey);
+                policyInfo.put("type", policyType);
+                policyInfo.put("coveredPerson", coveredPerson);
+                policyInfo.put("coverAmount", cover.toPlainString());
+                policyInfo.put("annualPremium", premium.toPlainString());
+                policies.add(policyInfo);
+
+                if ("term".equalsIgnoreCase(policyType)) {
+                    totalTermCover = totalTermCover.add(cover);
+                } else if ("health".equalsIgnoreCase(policyType)) {
+                    totalHealthCover = totalHealthCover.add(cover);
+                }
+                totalAnnualPremium = totalAnnualPremium.add(premium);
+            }
+        }
+
+        result.put("policies", policies);
+        result.put("policyCount", policies.size());
+        result.put("totalTermLifeCover", totalTermCover.toPlainString());
+        result.put("totalHealthCover", totalHealthCover.toPlainString());
+        result.put("totalAnnualPremium", totalAnnualPremium.toPlainString());
+
+        BigDecimal termMultiple = annualIncome.signum() > 0
+                ? totalTermCover.divide(annualIncome, 1, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        result.put("termLifeMultipleOfIncome", termMultiple.toPlainString());
+        result.put("termLifeAdequacy", termMultiple.compareTo(BigDecimal.TEN) >= 0
+                ? "adequate" : termMultiple.compareTo(BigDecimal.ZERO) == 0
+                ? "none" : "insufficient");
+        result.put("healthCoverAdequacy", totalHealthCover.compareTo(new BigDecimal("500000")) >= 0
+                ? "adequate" : totalHealthCover.compareTo(BigDecimal.ZERO) == 0
+                ? "none" : "insufficient");
+
+        return result;
+    }
+
+    /**
+     * Generates a compact profile summary for pre-loading into conversation context.
+     * Not a tool — called directly by ChatService.
+     */
+    public String generateProfileSummary(String userId) {
+        Map<String, Object> profileData = loadProfileData(userId);
+        if (profileData.containsKey("_error")) {
+            return "No profile found for this user.";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== USER PROFILE SNAPSHOT ===\n");
+
+        Map<String, Object> riskProfile = getSection(profileData, "riskProfile");
+        Integer age = getInteger(riskProfile, "age");
+        Integer retirementAge = getInteger(riskProfile, "retirementAge");
+        String tolerance = getString(riskProfile, "behaviouralTolerance");
+        if (age != null) sb.append("Age: ").append(age);
+        if (retirementAge != null) sb.append(" | Retirement age: ").append(retirementAge);
+        if (tolerance != null) sb.append(" | Risk tolerance: ").append(tolerance);
+        if (age != null) sb.append("\n");
+
+        Map<String, Object> income = getSection(profileData, "income");
+        BigDecimal salary = FinancialMathUtil.toBigDecimal(income.get("monthlySalary"));
+        BigDecimal otherIncome = FinancialMathUtil.toBigDecimal(income.get("otherIncome"));
+        sb.append("Monthly income: ₹").append(salary.toPlainString());
+        if (otherIncome.signum() > 0) {
+            sb.append(" + ₹").append(otherIncome.toPlainString()).append(" other");
+        }
+        sb.append("\n");
+
+        try {
+            NetWorthResult nw = healthEngine.calculateNetWorth(profileData);
+            sb.append("Net worth: ₹").append(nw.netWorth().toPlainString())
+                    .append(" (Liquid: ₹").append(nw.liquidAssets().toPlainString())
+                    .append(", Market-linked: ₹").append(nw.marketLinkedAssets().toPlainString())
+                    .append(", Restricted: ₹").append(nw.restrictedAssets().toPlainString())
+                    .append(", Illiquid: ₹").append(nw.illiquidAssets().toPlainString())
+                    .append(", Loans: ₹").append(nw.totalLiabilities().toPlainString())
+                    .append(")\n");
+
+            CashFlowResult cf = cashFlowEngine.calculateCashFlow(profileData);
+            sb.append("Monthly surplus: ₹").append(cf.monthlySurplus().toPlainString())
+                    .append(cf.hasSurplus() ? " (positive)" : " (DEFICIT)").append("\n");
+
+            EmergencyCoverageResult ec = healthEngine.calculateEmergencyCoverage(profileData);
+            sb.append("Emergency cover: ").append(ec.coverageMonths().setScale(1, java.math.RoundingMode.HALF_UP))
+                    .append(" months (threshold: ").append(ec.thresholdMonths()).append(")\n");
+        } catch (Exception e) {
+            log.warn("Could not calculate financial summary for profile context: {}", e.getMessage());
+        }
+
+        List<GoalAssessment> goals = goalEngine.assessGoals(profileData);
+        if (!goals.isEmpty()) {
+            sb.append("Goals: ");
+            goals.forEach(g -> sb.append(g.goalName())
+                    .append(" (").append(g.fundingPercent().setScale(1, java.math.RoundingMode.HALF_UP))
+                    .append("% funded, ").append(g.yearsRemaining()).append("y left), "));
+            sb.setLength(sb.length() - 2);
+            sb.append("\n");
+        }
+
+        Map<String, Object> insurance = getSection(profileData, "insurance");
+        if (!insurance.isEmpty()) {
+            sb.append("Insurance: ").append(insurance.size()).append(" policies");
+            BigDecimal annualIncome = salary.multiply(BigDecimal.valueOf(12));
+            BigDecimal termCover = BigDecimal.ZERO;
+            for (Object val : insurance.values()) {
+                if (val instanceof Map<?, ?> pol) {
+                    if ("term".equalsIgnoreCase((String) ((Map<?, ?>) pol).get("type"))) {
+                        termCover = termCover.add(FinancialMathUtil.toBigDecimal(((Map<?, ?>) pol).get("cover")));
+                    }
+                }
+            }
+            if (termCover.signum() > 0 && annualIncome.signum() > 0) {
+                sb.append(" (term life: ").append(
+                        termCover.divide(annualIncome, 1, java.math.RoundingMode.HALF_UP))
+                        .append("x annual income)");
+            }
+            sb.append("\n");
+        }
+
+        sb.append("=== END PROFILE SNAPSHOT ===");
+        return sb.toString();
     }
 
     private Map<String, Object> loadProfileData(String userId) {

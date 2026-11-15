@@ -188,8 +188,42 @@ Level 3 is the full production-grade multi-agent orchestration.
 - `docs/skills/kanakupillai-tax-specialist.md` — tax specialist handoff contract
 
 
+## 11. Persistent Conversation Memory (DynamoDB)
+
+**Priority:** Medium  
+**Identified during:** Conversation memory implementation  
+
+V1 implements in-memory conversation history (last 10 exchanges, 30-minute TTL). History is lost on backend restart or redeployment.
+
+### V2 Scope
+- **DynamoDB persistence**: Store conversation history using key pattern `PK = USER#<userId>`, `SK = CHAT#<timestamp>-<uuid>`
+- Messages stored as a JSON list attribute per conversation session
+- **DynamoDB TTL column** for automatic expiry (e.g., 7 days or configurable)
+- **Cross-session continuity**: "Continue where I left off" across browser sessions and backend restarts
+- **Conversation sessions**: group exchanges into sessions (new session after inactivity gap)
+- **Conversation search**: allow the advisor to reference past conversations ("Last time we discussed your home loan...")
+- **Privacy controls**: user can delete conversation history
+- **Storage optimization**: compress older conversations, keep only summaries beyond a threshold
+
+### V1 Status (implemented)
+- `ConversationMemory.java` — `ConcurrentHashMap` with 10-pair limit and 30-min TTL
+- Works across page navigations within a session
+- Lost on backend restart
+
+### DynamoDB Key Design
+```
+PK: USER#admin
+SK: CHAT#2026-11-15T22:00:00Z-a1b2c3d4
+Attributes:
+  - messages: [{"role":"user","content":"..."}, {"role":"assistant","content":"..."}]
+  - createdAt: 2026-11-15T22:00:00Z
+  - expiresAt: 1732060800  (DynamoDB TTL - epoch seconds)
+  - messageCount: 20
+```
+
+
 ---
 
 *Last updated: 15 November 2026*  
 *Items are ordered by priority, not implementation sequence.*  
-*10 items total — last added: #10 (multi-agent specialist orchestration).*
+*11 items total — last added: #11 (persistent conversation memory).*
