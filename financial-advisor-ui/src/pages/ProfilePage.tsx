@@ -257,6 +257,103 @@ const INVESTMENT_KEY_MAP: Record<string, string> = {
 
 const INVESTMENT_FREQUENCIES = ['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'] as const;
 
+/* ── Scheme / fund name suggestions per instrument type ─── */
+const SCHEME_SUGGESTIONS: Record<string, string[]> = {
+  'SIP (Mutual Funds)': [
+    // Parag Parikh
+    'Parag Parikh Flexi Cap Fund', 'Parag Parikh Conservative Hybrid Fund',
+    'Parag Parikh Dynamic Asset Allocation Fund', 'Parag Parikh Liquid Fund',
+    // Motilal Oswal
+    'Motilal Oswal Flexi Cap Fund', 'Motilal Oswal Midcap Fund',
+    'Motilal Oswal Large Cap Fund', 'Motilal Oswal S&P 500 Index Fund',
+    'Motilal Oswal Nasdaq 100 FoF', 'Motilal Oswal Large & Midcap Fund',
+    // Bandhan
+    'Bandhan Flexi Cap Fund', 'Bandhan Small Cap Fund', 'Bandhan Core Equity Fund',
+    'Bandhan Midcap Fund', 'Bandhan Balanced Advantage Fund',
+    // Edelweiss
+    'Edelweiss Flexi Cap Fund', 'Edelweiss Mid Cap Fund', 'Edelweiss Small Cap Fund',
+    'Edelweiss Balanced Advantage Fund', 'Edelweiss Large Cap Fund',
+    // HDFC
+    'HDFC Flexi Cap Fund', 'HDFC Mid-Cap Opportunities Fund', 'HDFC Small Cap Fund',
+    'HDFC Balanced Advantage Fund', 'HDFC Top 100 Fund', 'HDFC Hybrid Equity Fund',
+    'HDFC Short Term Debt Fund', 'HDFC Nifty 50 Index Fund',
+    // ICICI Prudential
+    'ICICI Pru Bluechip Fund', 'ICICI Pru Value Discovery Fund',
+    'ICICI Pru Equity & Debt Fund', 'ICICI Pru Technology Fund',
+    'ICICI Pru Flexi Cap Fund',
+    // SBI
+    'SBI Bluechip Fund', 'SBI Flexi Cap Fund', 'SBI Small Cap Fund',
+    'SBI Magnum Midcap Fund', 'SBI Equity Hybrid Fund', 'SBI Focused Equity Fund',
+    'SBI Nifty Index Fund',
+    // Axis
+    'Axis Bluechip Fund', 'Axis Midcap Fund', 'Axis Small Cap Fund',
+    'Axis Flexi Cap Fund',
+    // Kotak
+    'Kotak Flexi Cap Fund', 'Kotak Emerging Equity Fund', 'Kotak Small Cap Fund',
+    'Kotak Equity Opportunities Fund',
+    // Nippon India
+    'Nippon India Growth Fund', 'Nippon India Small Cap Fund',
+    'Nippon India Large Cap Fund', 'Nippon India Flexi Cap Fund',
+    // DSP
+    'DSP Flexi Cap Fund', 'DSP Midcap Fund', 'DSP Small Cap Fund',
+    'DSP Equity Opportunities Fund',
+    // Mirae Asset
+    'Mirae Asset Large Cap Fund', 'Mirae Asset Flexi Cap Fund',
+    'Mirae Asset Emerging Bluechip Fund', 'Mirae Asset Midcap Fund',
+    // Tata
+    'Tata Digital India Fund', 'Tata Mid Cap Growth Fund',
+    'Tata Small Cap Fund', 'Tata Flexi Cap Fund',
+    // UTI
+    'UTI Flexi Cap Fund', 'UTI Nifty 50 Index Fund', 'UTI Mastershare',
+    // Canara Robeco
+    'Canara Robeco Flexi Cap Fund', 'Canara Robeco Bluechip Equity Fund',
+    'Canara Robeco Small Cap Fund',
+    // Quant
+    'Quant Small Cap Fund', 'Quant Mid Cap Fund', 'Quant Flexi Cap Fund',
+    'Quant Active Fund',
+    // PPFAS
+    'PPFAS Flexi Cap Fund',
+    // Aditya Birla
+    'Aditya Birla SL Flexi Cap Fund', 'Aditya Birla SL Frontline Equity Fund',
+    'Aditya Birla SL Small Cap Fund',
+    // Franklin Templeton
+    'Franklin India Flexi Cap Fund', 'Franklin India Bluechip Fund',
+    'Franklin India Smaller Companies Fund',
+    // Sundaram
+    'Sundaram Mid Cap Fund', 'Sundaram Small Cap Fund', 'Sundaram Flexi Cap Fund',
+  ],
+  'ELSS (Tax Saving MF)': [
+    'Parag Parikh ELSS Tax Saver Fund', 'Motilal Oswal ELSS Tax Saver Fund',
+    'Bandhan ELSS Tax Saver Fund', 'Edelweiss ELSS Tax Saver Fund',
+    'HDFC ELSS Tax Saver Fund', 'ICICI Pru ELSS Tax Saver Fund',
+    'SBI ELSS Tax Saver Fund', 'Axis ELSS Tax Saver Fund',
+    'Kotak ELSS Tax Saver Fund', 'Nippon India ELSS Tax Saver Fund',
+    'DSP Tax Saver Fund', 'Mirae Asset ELSS Tax Saver Fund',
+    'Tata ELSS Tax Saver Fund', 'UTI ELSS Tax Saver Fund',
+    'Canara Robeco ELSS Tax Saver Fund', 'Quant ELSS Tax Saver Fund',
+    'Aditya Birla SL ELSS Tax Saver Fund', 'Franklin India ELSS Tax Saver Fund',
+  ],
+  'Direct Stocks': [
+    // Nifty 50 top constituents
+    'Reliance Industries', 'TCS', 'HDFC Bank', 'Infosys', 'ICICI Bank',
+    'Bharti Airtel', 'State Bank of India', 'ITC', 'Kotak Mahindra Bank',
+    'Hindustan Unilever', 'Larsen & Toubro', 'Axis Bank', 'Bajaj Finance',
+    'Maruti Suzuki', 'Asian Paints', 'Titan Company', 'Sun Pharma',
+    'HCL Technologies', 'Wipro', 'NTPC', 'Power Grid', 'UltraTech Cement',
+    'Nestle India', 'Tata Motors', 'Tech Mahindra', 'Mahindra & Mahindra',
+    'Bajaj Finserv', 'Adani Enterprises', 'Adani Ports', 'Coal India',
+    'Tata Steel', 'JSW Steel', 'Cipla', 'Dr Reddy\'s', 'Divi\'s Labs',
+    'Eicher Motors', 'Hero MotoCorp', 'Britannia', 'BPCL', 'ONGC',
+    'Grasim Industries', 'IndusInd Bank', 'Tata Consumer', 'Apollo Hospitals',
+    'SBI Life Insurance', 'HDFC Life Insurance', 'Zomato', 'Jio Financial',
+  ],
+  'NPS Contribution': [
+    'SBI Pension Fund', 'LIC Pension Fund', 'UTI Retirement Solutions',
+    'HDFC Pension Fund', 'ICICI Pru Pension Fund', 'Kotak Pension Fund',
+    'Aditya Birla SL Pension Fund', 'Tata Pension Fund', 'Max Life Pension Fund',
+  ],
+};
+
 const INSTRUMENT_DEFAULT_RETURN: Record<string, number> = {
   'SIP (Mutual Funds)': 12, 'PPF Contribution': 7.1, 'NPS Contribution': 9,
   'ELSS (Tax Saving MF)': 12, 'Sukanya Samriddhi (SSY)': 8,
@@ -1336,17 +1433,11 @@ function InvestmentCard({ investment, onInstrumentChange, onFieldChange, onRemov
             </div>
           )}
         </div>
-        <div>
-          <div className="flex items-center gap-1 mb-1.5">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Fund / Scheme Name</label>
-            <InfoTooltip text="Optional: Name of the specific fund, scheme, or stock. E.g. 'HDFC Flexi Cap Fund', 'Axis Small Cap'."><span /></InfoTooltip>
-          </div>
-          <input type="text" value={investment.name} onChange={(e) => onFieldChange('name', e.target.value)}
-            placeholder="e.g. HDFC Flexi Cap Fund"
-            className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
-                       bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100
-                       focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
-        </div>
+        <SchemeNameField
+          instrument={investment.instrument}
+          value={investment.name}
+          onChange={(v) => onFieldChange('name', v)}
+        />
       </div>
 
       {/* Amount + frequency row */}
@@ -1371,6 +1462,92 @@ function InvestmentCard({ investment, onInstrumentChange, onFieldChange, onRemov
         <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
           📈 Assumed return: ~{INSTRUMENT_DEFAULT_RETURN[investment.instrument] ?? 10}% p.a.
         </p>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SchemeNameField — autocomplete fund/scheme name based on instrument
+   ══════════════════════════════════════════════════════════════ */
+function SchemeNameField({ instrument, value, onChange }: {
+  instrument: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [search, setSearch] = useState(value);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const schemes = SCHEME_SUGGESTIONS[instrument] || [];
+  const hasSchemes = schemes.length > 0;
+  const filtered = hasSchemes && search.length >= 1
+    ? schemes.filter((s) => s.toLowerCase().includes(search.toLowerCase())).slice(0, 15)
+    : [];
+
+  useEffect(() => { setSearch(value); }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        if (search !== value) onChange(search);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [search, value, onChange]);
+
+  function selectScheme(s: string) { setSearch(s); onChange(s); setOpen(false); }
+
+  const placeholder = hasSchemes
+    ? `Type to search ${schemes.length}+ schemes...`
+    : 'e.g. Fund or scheme name';
+
+  return (
+    <div className="relative" ref={ref}>
+      <div className="flex items-center gap-1 mb-1.5">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {hasSchemes ? 'Fund / Scheme Name' : 'Name (optional)'}
+        </label>
+        <InfoTooltip text={hasSchemes
+          ? `Start typing to search from ${schemes.length}+ popular schemes. You can also type a custom name.`
+          : 'Optional: Name of the specific investment.'}><span /></InfoTooltip>
+      </div>
+      <input type="text" value={search}
+        onChange={(e) => { setSearch(e.target.value); if (hasSchemes) setOpen(true); }}
+        onFocus={() => { if (hasSchemes && search.length >= 1) setOpen(true); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (filtered.length > 0 && search) selectScheme(filtered[0]);
+            else { onChange(search); setOpen(false); }
+          }
+        }}
+        placeholder={placeholder}
+        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                   bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100
+                   focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+                        border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
+                        max-h-48 overflow-y-auto animate-fade-in">
+          {filtered.map((s) => (
+            <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectScheme(s)}
+              className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30
+                         text-gray-700 dark:text-gray-300 transition-colors
+                         first:rounded-t-xl last:rounded-b-xl">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+      {open && search.length >= 1 && filtered.length === 0 && hasSchemes && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+                        border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
+                        px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 animate-fade-in">
+          No match — press <strong>Enter</strong> to use "<em>{search}</em>"
+        </div>
       )}
     </div>
   );
