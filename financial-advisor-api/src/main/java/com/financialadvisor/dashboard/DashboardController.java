@@ -198,17 +198,63 @@ public class DashboardController {
                 "Housing EMI: ₹" + housingEMI.toPlainString() + " (" + housingRatio.setScale(1, RoundingMode.HALF_UP) + "% of income)",
                 housingStatus.equals("high") ? List.of("Housing cost exceeds 40% of income — review options") : List.of()));
 
-        // 10. Key Warnings
+        // 10. Key Warnings — plain language, actionable
         List<String> warnings = new ArrayList<>();
-        if (ec.isBelowThreshold()) warnings.add("Emergency fund below safe threshold");
-        if (debtStatus.equals("high")) warnings.add("High debt-to-asset ratio");
-        if (cf.isDeficit()) warnings.add("Monthly cash flow deficit — spending exceeds income");
-        goals.stream().filter(g -> g.fundingPercent().compareTo(new BigDecimal("25")) < 0)
-                .forEach(g -> warnings.add("Goal '" + g.goalName() + "' severely underfunded (" + g.fundingPercent() + "%)"));
+
+        if (ec.isBelowThreshold()) {
+            warnings.add("Your emergency fund covers less than "
+                    + ec.thresholdMonths().setScale(0, RoundingMode.HALF_UP) + " months of expenses. "
+                    + "Try to save at least " + ec.thresholdMonths().setScale(0, RoundingMode.HALF_UP)
+                    + " months' worth (₹" + ec.mandatoryMonthlyExpense()
+                        .multiply(ec.thresholdMonths())
+                        .setScale(0, RoundingMode.HALF_UP).toPlainString()
+                    + ") in a savings account or liquid FD.");
+        }
+
+        if (debtStatus.equals("high")) {
+            BigDecimal debtPercent = nw.totalAssets().signum() > 0
+                    ? nw.totalLiabilities().multiply(BigDecimal.valueOf(100))
+                        .divide(nw.totalAssets(), 0, RoundingMode.HALF_UP)
+                    : BigDecimal.valueOf(100);
+            warnings.add("Your loans (₹" + nw.totalLiabilities().setScale(0, RoundingMode.HALF_UP).toPlainString()
+                    + ") are " + debtPercent + "% of your assets. "
+                    + "A healthy target is below 50%. Consider paying down high-interest debt first or increasing your investments.");
+        }
+
+        if (cf.isDeficit()) {
+            warnings.add("You're spending more than you earn each month. "
+                    + "Review your expenses on the Profile page and look for areas to cut back, "
+                    + "or explore ways to increase your income.");
+        }
+
+        for (GoalAssessment g : goals) {
+            if (g.fundingPercent().compareTo(new BigDecimal("25")) < 0) {
+                String goalAdvice;
+                if (g.fundingPercent().compareTo(BigDecimal.ZERO) == 0) {
+                    goalAdvice = "'" + g.goalName() + "' has no money set aside yet. "
+                            + "Go to your Profile → Assets and tag investments to this goal, "
+                            + "or start a monthly SIP of ₹" + g.requiredMonthlySIP()
+                                .setScale(0, RoundingMode.HALF_UP).toPlainString()
+                            + " to get on track (" + g.yearsRemaining() + " years left).";
+                } else {
+                    goalAdvice = "'" + g.goalName() + "' is only " + g.fundingPercent().setScale(1, RoundingMode.HALF_UP)
+                            + "% funded. You need about ₹" + g.shortfall()
+                                .setScale(0, RoundingMode.HALF_UP).toPlainString()
+                            + " more. A monthly SIP of ₹" + g.requiredMonthlySIP()
+                                .setScale(0, RoundingMode.HALF_UP).toPlainString()
+                            + " could close the gap over " + g.yearsRemaining() + " years.";
+                }
+                warnings.add(goalAdvice);
+            }
+        }
+
+        String warningDescription = warnings.isEmpty()
+                ? "You're in good shape — no urgent actions right now! 🎉"
+                : warnings.size() + " thing(s) to work on — start with the first one";
 
         dims.add(new DashboardResponse.DimensionStatus(10, "Key Warnings & Actions",
                 warnings.isEmpty() ? "clear" : "attention-needed",
-                warnings.isEmpty() ? "No critical issues detected" : warnings.size() + " issue(s) require attention",
+                warningDescription,
                 warnings));
 
         return dims;
