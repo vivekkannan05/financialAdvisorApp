@@ -163,7 +163,7 @@ export default function DashboardPage() {
             <span />
           </InfoTooltip>
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
           <QuickStat label="💧 Liquid" value={formatInr(s.liquidAssets)}
             tooltip="Savings, FD, Cash — instantly available" />
           <QuickStat label="📈 Market-Linked" value={formatInr(s.marketLinkedAssets ?? 0)}
@@ -173,7 +173,6 @@ export default function DashboardPage() {
           <QuickStat label="🏠 Illiquid" value={formatInr(s.illiquidAssets)}
             tooltip="Gold, Land, Property — hard to convert quickly" />
           <QuickStat label="💳 Total Loans" value={formatInr(s.totalLiabilities)} negative={s.totalLiabilities > 0} />
-          <QuickStat label="⚖️ Risk Appetite" value={s.riskLevel.replace('_', ' ')} />
         </div>
       </div>
 
