@@ -104,13 +104,13 @@ public class DashboardController {
                         + " | Illiquid: ₹" + nw.illiquidAssets().toPlainString(),
                 liquidStatus.equals("warning") ? List.of("Build liquid emergency reserves") : List.of()));
 
-        // 2. Insurance
+        // 2. Insurance — evaluate coverage adequacy
         Map<String, Object> insurance = getSection(data, "insurance");
-        String insuranceStatus = (insurance != null && !insurance.isEmpty()) ? "review" : "critical";
-        dims.add(new DashboardResponse.DimensionStatus(2, "Insurance Status",
-                insuranceStatus,
-                insurance != null ? "Insurance policies on record: " + insurance.size() : "No insurance data",
-                insuranceStatus.equals("critical") ? List.of("Add term life and health insurance details") : List.of()));
+        InsuranceAssessment insAssessment = assessInsurance(insurance, cf.grossMonthlyIncome());
+        dims.add(new DashboardResponse.DimensionStatus(2, "Insurance Cover",
+                insAssessment.status,
+                insAssessment.description,
+                insAssessment.actions));
 
         // 3. Debt
         String debtStatus = nw.totalLiabilities().compareTo(BigDecimal.ZERO) == 0 ? "debt-free"
@@ -236,5 +236,82 @@ public class DashboardController {
         );
 
         return riskAssessor.assess(ctx);
+    }
+
+    /* ── Insurance adequacy assessment ──────────────────────────────── */
+
+    private record InsuranceAssessment(String status, String description, List<String> actions) {}
+
+    @SuppressWarnings("unchecked")
+    private InsuranceAssessment assessInsurance(Map<String, Object> insurance,
+                                                BigDecimal grossMonthlyIncome) {
+        if (insurance == null || insurance.isEmpty()) {
+            return new InsuranceAssessment("critical", "No insurance data on record",
+                    List.of("Add term life and health insurance details"));
+        }
+
+        BigDecimal annualIncome = grossMonthlyIncome.multiply(BigDecimal.valueOf(12));
+        BigDecimal totalLifeCover = BigDecimal.ZERO;
+        BigDecimal totalHealthCover = BigDecimal.ZERO;
+        boolean hasTermLife = false;
+        boolean hasHealth = false;
+        int policyCount = 0;
+
+        for (Map.Entry<String, Object> entry : insurance.entrySet()) {
+            policyCount++;
+            String name = entry.getKey().toLowerCase();
+            if (entry.getValue() instanceof Map<?, ?> pol) {
+                Map<String, Object> policy = (Map<String, Object>) pol;
+                BigDecimal cover = getBigDecimal(policy, "cover");
+                if (cover == null) cover = getBigDecimal(policy, "sumAssured");
+                if (cover == null) cover = BigDecimal.ZERO;
+
+                if (name.contains("term") || name.contains("life")) {
+                    hasTermLife = true;
+                    totalLifeCover = totalLifeCover.add(cover);
+                } else if (name.contains("health") || name.contains("medical")) {
+                    hasHealth = true;
+                    totalHealthCover = totalHealthCover.add(cover);
+                }
+            }
+        }
+
+        List<String> actions = new ArrayList<>();
+        List<String> details = new ArrayList<>();
+        details.add(policyCount + " policies");
+
+        if (!hasTermLife) {
+            actions.add("Add term life insurance (recommended: 10-15× annual income)");
+        } else {
+            BigDecimal lifeMultiple = annualIncome.signum() > 0
+                    ? totalLifeCover.divide(annualIncome, 1, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+            details.add("Life cover: ₹" + totalLifeCover.toPlainString()
+                    + " (" + lifeMultiple + "× annual income)");
+            if (lifeMultiple.compareTo(BigDecimal.TEN) < 0) {
+                actions.add("Life cover is " + lifeMultiple
+                        + "× income — consider increasing to 10-15×");
+            }
+        }
+
+        if (!hasHealth) {
+            actions.add("Add health insurance for family");
+        } else {
+            details.add("Health cover: ₹" + totalHealthCover.toPlainString());
+            if (totalHealthCover.compareTo(BigDecimal.valueOf(500_000)) < 0) {
+                actions.add("Health cover below ₹5L — consider increasing");
+            }
+        }
+
+        String status;
+        if (!hasTermLife || !hasHealth) {
+            status = "critical";
+        } else if (actions.isEmpty()) {
+            status = "healthy";
+        } else {
+            status = "review";
+        }
+
+        return new InsuranceAssessment(status, String.join(" | ", details), actions);
     }
 }

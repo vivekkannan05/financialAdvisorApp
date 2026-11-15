@@ -88,4 +88,52 @@ class PromptGuardServiceTest {
         var result = guard.screen("What is the NPS systematic withdrawal plan?");
         assertTrue(result.passed(), "Financial use of 'system' should pass");
     }
+
+    /* ── Off-topic detection tests ─────────────────────────────────── */
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Write me a poem about the moon",
+            "Tell me a joke",
+            "Help me with my homework",
+            "What's the weather today?",
+            "Translate this to Hindi",
+            "Create a website for my business",
+            "Give me a workout plan",
+            "Summarize this article about space",
+            "What are the symptoms of diabetes?",
+            "Who is the president of USA?",
+            "Write a Python script to sort a list",
+            "Help me with my exam preparation",
+            "Compose a song about love",
+            "Generate a logo for my brand",
+            "Tell me a fun fact about dinosaurs",
+            "Give me relationship advice"
+    })
+    @DisplayName("Off-topic messages are politely declined")
+    void offTopicMessages_declined(String input) {
+        var result = guard.screen(input);
+        assertFalse(result.passed(), "Should decline off-topic: " + input);
+        assertTrue(result.reason().contains("financial adviser"),
+                "Decline message should mention financial adviser role");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Should I invest in stocks or mutual funds?",
+            "What is the best health insurance policy?",
+            "How do I save tax under Section 80C?",
+            "Is my emergency fund enough?",
+            "Should I prepay my home loan?",
+            "What happens if I lose my job?",
+            "How much should I save for retirement?",
+            "Can you explain SIP vs lump sum investing?",
+            "What is the medical insurance cover I need?",
+            "Help me with my budget"
+    })
+    @DisplayName("Financial questions pass even if they contain trigger-adjacent words")
+    void financialQuestions_pass(String input) {
+        var result = guard.screen(input);
+        assertTrue(result.passed(), "Financial question should pass: " + input);
+    }
 }
