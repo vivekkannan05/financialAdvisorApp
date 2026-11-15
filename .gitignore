@@ -22,3 +22,7 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc
