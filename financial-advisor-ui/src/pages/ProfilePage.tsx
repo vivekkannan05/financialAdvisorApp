@@ -3,8 +3,8 @@ import { fetchProfile, updateProfile, createProfile } from '@/api/profile';
 import InfoTooltip from '@/components/InfoTooltip';
 import type { ProfileSnapshot } from '@/types/api';
 
-/* ── Expense item model ───────────────────────────────────── */
-interface ExpenseItem {
+/* ── Shared dynamic-row item ──────────────────────────────── */
+interface DynamicItem {
   id: string;
   category: string;
   amount: number;
@@ -13,8 +13,8 @@ interface ExpenseItem {
 interface ProfileData {
   personal: { age: number; retirementAge: number; riskTolerance: string; city: string; dependents: number };
   income: { monthlySalary: number; otherIncome: number };
-  expenses: ExpenseItem[];
-  assets: { savingsAccount: number; fixedDeposits: number; mutualFunds: number; stocks: number; ppf: number; epf: number; gold: number };
+  expenses: DynamicItem[];
+  assets: DynamicItem[];
   liabilities: {
     homeLoan: { outstanding: number; emi: number; rateOfInterest: number; remainingMonths: number };
     carLoan: { outstanding: number; emi: number; rateOfInterest: number; remainingMonths: number };
@@ -24,29 +24,18 @@ interface ProfileData {
   goals: Array<{ name: string; targetAmount: number; targetYear: number; priority: string }>;
 }
 
-/* ── Expense suggestions & metadata ───────────────────────── */
-const DEFAULT_EXPENSE_SUGGESTIONS = [
-  'Rent / Housing',
-  'Groceries & Food',
-  'Bills & Utilities',
-  'Transportation',
-  'Fun & Entertainment',
-  'Other Expenses',
-  'Education & Books',
-  'Medical / Health',
-  'Clothing',
-  'Household Items',
-  'Gifts & Donations',
-  'Childcare',
-  'Personal Care',
-  'Subscriptions',
-  'Eating Out',
-  'Travel',
-  'Gym / Fitness',
-  'Maintenance & Repairs',
+/* ══════════════════════════════════════════════════════════════
+   EXPENSE constants
+   ══════════════════════════════════════════════════════════════ */
+const EXPENSE_SUGGESTIONS = [
+  'Rent / Housing', 'Groceries & Food', 'Bills & Utilities', 'Transportation',
+  'Fun & Entertainment', 'Other Expenses', 'Education & Books', 'Medical / Health',
+  'Clothing', 'Household Items', 'Gifts & Donations', 'Childcare',
+  'Personal Care', 'Subscriptions', 'Eating Out', 'Travel',
+  'Gym / Fitness', 'Maintenance & Repairs',
 ];
 
-const CATEGORY_EMOJI: Record<string, string> = {
+const EXPENSE_EMOJI: Record<string, string> = {
   'Rent / Housing': '🏠', 'Groceries & Food': '🍎', 'Bills & Utilities': '💡',
   'Transportation': '🚗', 'Fun & Entertainment': '🎬', 'Other Expenses': '📦',
   'Education & Books': '📚', 'Medical / Health': '🏥', 'Clothing': '👕',
@@ -55,7 +44,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
   'Travel': '✈️', 'Gym / Fitness': '🏋️', 'Maintenance & Repairs': '🔧',
 };
 
-const CATEGORY_TOOLTIPS: Record<string, string> = {
+const EXPENSE_TOOLTIPS: Record<string, string> = {
   'Rent / Housing': 'Monthly rent or housing maintenance charges. If you own your home, put 0.',
   'Groceries & Food': 'Monthly spending on groceries, vegetables, fruits, eating out.',
   'Bills & Utilities': 'Electricity, water, internet, phone bill, gas, DTH — all monthly bills.',
@@ -69,26 +58,107 @@ const CATEGORY_TOOLTIPS: Record<string, string> = {
   'Eating Out': 'Restaurants, ordering food, cafés, tea/coffee outside.',
 };
 
-const KEY_TO_CATEGORY: Record<string, string> = {
+const EXPENSE_KEY_MAP: Record<string, string> = {
   rent: 'Rent / Housing', groceries: 'Groceries & Food', utilities: 'Bills & Utilities',
   transportation: 'Transportation', entertainment: 'Fun & Entertainment', other: 'Other Expenses',
 };
 
+/* ══════════════════════════════════════════════════════════════
+   ASSET / SAVINGS constants
+   ══════════════════════════════════════════════════════════════ */
+const ASSET_SUGGESTIONS = [
+  'Savings Account', 'Fixed Deposits (FD)', 'Mutual Funds', 'Stocks / Shares',
+  'PPF', 'EPF / PF', 'Gold', 'NPS', 'Real Estate', 'Recurring Deposits (RD)',
+  'Sovereign Gold Bonds', 'Corporate Bonds', 'Digital Gold', 'Cash in Hand',
+  'ULIP', 'Post Office Savings', 'Cryptocurrency', 'Other Investments',
+];
+
+const ASSET_EMOJI: Record<string, string> = {
+  'Savings Account': '🏦', 'Fixed Deposits (FD)': '🔒', 'Mutual Funds': '📊',
+  'Stocks / Shares': '📈', 'PPF': '🏛️', 'EPF / PF': '🏢', 'Gold': '✨',
+  'NPS': '🧓', 'Real Estate': '🏘️', 'Recurring Deposits (RD)': '🔄',
+  'Sovereign Gold Bonds': '🥇', 'Corporate Bonds': '🏗️', 'Digital Gold': '💛',
+  'Cash in Hand': '💵', 'ULIP': '📋', 'Post Office Savings': '📮',
+  'Cryptocurrency': '₿', 'Other Investments': '📦',
+};
+
+const ASSET_TOOLTIPS: Record<string, string> = {
+  'Savings Account': 'Total balance in all your savings bank accounts. This is your most accessible money.',
+  'Fixed Deposits (FD)': 'Total value of all your FDs. FDs give guaranteed returns but money is locked for a period.',
+  'Mutual Funds': 'Current value of all mutual fund investments (SIPs + lump sum). Check your fund app for today\'s value.',
+  'Stocks / Shares': 'Current value of shares you directly own (Zerodha, Groww, etc). Check your demat account.',
+  'PPF': 'Public Provident Fund — government savings scheme with tax benefits. Locked for 15 years, guaranteed returns.',
+  'EPF / PF': 'Employee Provident Fund — salary deduction + employer contribution. Check EPFO passbook online.',
+  'Gold': 'Value of gold you own — jewellery, coins, digital gold, Sovereign Gold Bonds. Use today\'s market price.',
+  'NPS': 'National Pension System — retirement savings scheme. Partially locked until 60, gives market-linked returns.',
+  'Real Estate': 'Current market value of property you own (excluding your primary home if you have a home loan listed).',
+  'Recurring Deposits (RD)': 'Total value of your RDs. Like an FD but you deposit a fixed amount every month.',
+  'Sovereign Gold Bonds': 'Government gold bonds — earn interest on gold! Check current NAV on RBI website.',
+  'Cryptocurrency': 'Current value of crypto holdings (Bitcoin, Ethereum, etc). Very volatile — be careful!',
+  'Cash in Hand': 'Physical cash you keep at home or in a locker.',
+  'Other Investments': 'Any other savings or investments not listed above.',
+};
+
+const ASSET_KEY_MAP: Record<string, string> = {
+  savingsAccount: 'Savings Account', fixedDeposits: 'Fixed Deposits (FD)',
+  mutualFunds: 'Mutual Funds', stocks: 'Stocks / Shares',
+  ppf: 'PPF', epf: 'EPF / PF', gold: 'Gold', nps: 'NPS',
+  realEstate: 'Real Estate', recurringDeposits: 'Recurring Deposits (RD)',
+};
+
+/* ══════════════════════════════════════════════════════════════
+   Shared helpers
+   ══════════════════════════════════════════════════════════════ */
 function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function loadCustomCategories(): string[] {
-  try { return JSON.parse(localStorage.getItem('fa-custom-expense-categories') || '[]'); }
+function loadCustom(key: string): string[] {
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); }
   catch { return []; }
 }
 
-function saveCustomCategory(cat: string) {
-  if (!cat || DEFAULT_EXPENSE_SUGGESTIONS.includes(cat)) return;
-  const custom = loadCustomCategories();
+function saveCustom(key: string, defaults: string[], cat: string) {
+  if (!cat || defaults.includes(cat)) return;
+  const custom = loadCustom(key);
   if (!custom.includes(cat)) {
-    localStorage.setItem('fa-custom-expense-categories', JSON.stringify([...custom, cat]));
+    localStorage.setItem(key, JSON.stringify([...custom, cat]));
   }
+}
+
+function objectToItems(obj: Record<string, unknown>, keyMap: Record<string, string>): DynamicItem[] {
+  return Object.entries(obj)
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([key, value]) => ({
+      id: uid(),
+      category: keyMap[key] || key,
+      amount: Number(value) || 0,
+    }));
+}
+
+function arrayToItems(arr: DynamicItem[]): DynamicItem[] {
+  return arr.map((e) => ({
+    id: e.id || uid(),
+    category: String(e.category || ''),
+    amount: Number(e.amount) || 0,
+  }));
+}
+
+function parseItems(raw: unknown, keyMap: Record<string, string>): DynamicItem[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return arrayToItems(raw as DynamicItem[]);
+  return objectToItems(raw as Record<string, unknown>, keyMap);
+}
+
+function itemsToObject(items: DynamicItem[], storageKey: string, defaults: string[]): Record<string, number> {
+  const obj: Record<string, number> = {};
+  items.forEach((e) => {
+    if (e.category.trim() && e.amount > 0) {
+      obj[e.category.trim()] = e.amount;
+      saveCustom(storageKey, defaults, e.category.trim());
+    }
+  });
+  return obj;
 }
 
 /* ── Default data ─────────────────────────────────────────── */
@@ -96,7 +166,7 @@ const defaultData: ProfileData = {
   personal: { age: 30, retirementAge: 60, riskTolerance: 'MODERATE', city: '', dependents: 0 },
   income: { monthlySalary: 0, otherIncome: 0 },
   expenses: [],
-  assets: { savingsAccount: 0, fixedDeposits: 0, mutualFunds: 0, stocks: 0, ppf: 0, epf: 0, gold: 0 },
+  assets: [],
   liabilities: {
     homeLoan: { outstanding: 0, emi: 0, rateOfInterest: 0, remainingMonths: 0 },
     carLoan: { outstanding: 0, emi: 0, rateOfInterest: 0, remainingMonths: 0 },
@@ -106,7 +176,9 @@ const defaultData: ProfileData = {
   goals: [],
 };
 
-/* ── Main component ───────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   Main component
+   ══════════════════════════════════════════════════════════════ */
 export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileSnapshot | null>(null);
   const [data, setData] = useState<ProfileData>(defaultData);
@@ -141,26 +213,6 @@ export default function ProfilePage() {
   }
 
   function mergeData(base: ProfileData, incoming: Partial<ProfileData>): ProfileData {
-    let expenses: ExpenseItem[] = [];
-    if (incoming?.expenses) {
-      if (Array.isArray(incoming.expenses)) {
-        expenses = (incoming.expenses as ExpenseItem[]).map((e) => ({
-          id: e.id || uid(),
-          category: String(e.category || ''),
-          amount: Number(e.amount) || 0,
-        }));
-      } else {
-        const expObj = incoming.expenses as unknown as Record<string, unknown>;
-        expenses = Object.entries(expObj)
-          .filter(([, v]) => v !== undefined && v !== null)
-          .map(([key, value]) => ({
-            id: uid(),
-            category: KEY_TO_CATEGORY[key] || key,
-            amount: Number(value) || 0,
-          }));
-      }
-    }
-
     return {
       personal: {
         ...coerceNumbers(base.personal, incoming?.personal as Record<string, unknown>),
@@ -168,8 +220,8 @@ export default function ProfilePage() {
         city: (incoming?.personal?.city as string) ?? base.personal.city,
       },
       income: coerceNumbers(base.income, incoming?.income as Record<string, unknown>),
-      expenses,
-      assets: coerceNumbers(base.assets, incoming?.assets as Record<string, unknown>),
+      expenses: parseItems(incoming?.expenses, EXPENSE_KEY_MAP),
+      assets: parseItems(incoming?.assets, ASSET_KEY_MAP),
       liabilities: {
         homeLoan: coerceNumbers(base.liabilities.homeLoan, incoming?.liabilities?.homeLoan as Record<string, unknown>),
         carLoan: coerceNumbers(base.liabilities.carLoan, incoming?.liabilities?.carLoan as Record<string, unknown>),
@@ -186,14 +238,11 @@ export default function ProfilePage() {
     setError(null);
     setSuccess(null);
     try {
-      const expensesObj: Record<string, number> = {};
-      data.expenses.forEach((e) => {
-        if (e.category.trim() && e.amount > 0) {
-          expensesObj[e.category.trim()] = e.amount;
-          saveCustomCategory(e.category.trim());
-        }
-      });
-      const payload = { ...data, expenses: expensesObj } as unknown as Record<string, unknown>;
+      const payload = {
+        ...data,
+        expenses: itemsToObject(data.expenses, 'fa-custom-expense-categories', EXPENSE_SUGGESTIONS),
+        assets: itemsToObject(data.assets, 'fa-custom-asset-categories', ASSET_SUGGESTIONS),
+      } as unknown as Record<string, unknown>;
       const saved = profile ? await updateProfile(payload) : await createProfile(payload);
       setProfile(saved);
       setSuccess('Saved successfully! Your dashboard will now show updated numbers. 🎉');
@@ -214,39 +263,39 @@ export default function ProfilePage() {
           ...prev.liabilities,
           [subSection]: { ...(prev.liabilities as Record<string, Record<string, number>>)[subSection], [field]: value },
         };
-      } else if (section !== 'expenses') {
+      } else if (section !== 'expenses' && section !== 'assets') {
         (updated[section] as Record<string, unknown>)[field] = value;
       }
       return updated;
     });
   }
 
-  /* ── Expense mutators ───────────────────────────────────── */
-  function addExpense() {
+  /* ── Dynamic-list mutators (shared for expenses & assets) ── */
+  function addItem(list: 'expenses' | 'assets') {
     setData((prev) => ({
       ...prev,
-      expenses: [...prev.expenses, { id: uid(), category: '', amount: 0 }],
+      [list]: [...prev[list], { id: uid(), category: '', amount: 0 }],
     }));
   }
 
-  function removeExpense(id: string) {
+  function removeItem(list: 'expenses' | 'assets', id: string) {
     setData((prev) => ({
       ...prev,
-      expenses: prev.expenses.filter((e) => e.id !== id),
+      [list]: prev[list].filter((e) => e.id !== id),
     }));
   }
 
-  function updateExpenseCategory(id: string, category: string) {
+  function updateItemCategory(list: 'expenses' | 'assets', id: string, category: string) {
     setData((prev) => ({
       ...prev,
-      expenses: prev.expenses.map((e) => (e.id === id ? { ...e, category } : e)),
+      [list]: prev[list].map((e) => (e.id === id ? { ...e, category } : e)),
     }));
   }
 
-  function updateExpenseAmount(id: string, amount: number) {
+  function updateItemAmount(list: 'expenses' | 'assets', id: string, amount: number) {
     setData((prev) => ({
       ...prev,
-      expenses: prev.expenses.map((e) => (e.id === id ? { ...e, amount } : e)),
+      [list]: prev[list].map((e) => (e.id === id ? { ...e, amount } : e)),
     }));
   }
 
@@ -290,10 +339,15 @@ export default function ProfilePage() {
     { id: 'goals', icon: '🎯', label: 'Goals' },
   ];
 
-  const usedCategories = data.expenses.map((e) => e.category).filter(Boolean);
+  const usedExpenseCategories = data.expenses.map((e) => e.category).filter(Boolean);
   const expenseTotal = data.expenses.reduce((sum, e) => sum + e.amount, 0);
 
-  /* ── Render ─────────────────────────────────────────────── */
+  const usedAssetCategories = data.assets.map((a) => a.category).filter(Boolean);
+  const assetTotal = data.assets.reduce((sum, a) => sum + a.amount, 0);
+
+  /* ══════════════════════════════════════════════════════════
+     Render
+     ══════════════════════════════════════════════════════════ */
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -350,6 +404,7 @@ export default function ProfilePage() {
 
       {/* Form sections */}
       <div className="bg-white dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 md:p-8">
+
         {/* ────────── About You ────────── */}
         {activeSection === 'personal' && (
           <FormSection title="About You" hint="Basic info that helps us give better advice" icon="👤">
@@ -357,13 +412,13 @@ export default function ProfilePage() {
               <NumberField label="Your Age" value={data.personal.age} onChange={(v) => updateField('personal', 'age', v)}
                 tooltip="How old are you? This helps us plan for retirement and set the right risk level for investments." />
               <NumberField label="Retirement Age" value={data.personal.retirementAge} onChange={(v) => updateField('personal', 'retirementAge', v)}
-                tooltip="At what age do you want to stop working? In India, most people plan for 58-65. Earlier retirement needs more savings!" />
+                tooltip="At what age do you want to stop working? In India, most people plan for 58-65." />
             </FormRow>
             <FormRow>
               <TextField label="City" value={data.personal.city} onChange={(v) => updateField('personal', 'city', v)}
-                tooltip="Which city do you live in? Cost of living varies a lot between cities like Mumbai, Bangalore, and smaller towns." placeholder="e.g. Bangalore" />
+                tooltip="Which city do you live in? Cost of living varies a lot between cities." placeholder="e.g. Bangalore" />
               <NumberField label="Dependents" value={data.personal.dependents} onChange={(v) => updateField('personal', 'dependents', v)}
-                tooltip="How many people depend on your income? (spouse, children, parents). More dependents = need more insurance and emergency fund." />
+                tooltip="How many people depend on your income? (spouse, children, parents)." />
             </FormRow>
             <div>
               <div className="flex items-center gap-1 mb-1.5">
@@ -373,7 +428,7 @@ export default function ProfilePage() {
                 </InfoTooltip>
               </div>
               <div className="flex gap-3 flex-wrap">
-                {['CONSERVATIVE', 'MODERATE', 'AGGRESSIVE'].map((r) => (
+                {(['CONSERVATIVE', 'MODERATE', 'AGGRESSIVE'] as const).map((r) => (
                   <button key={r} type="button"
                     onClick={() => updateField('personal', 'riskTolerance', r)}
                     className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
@@ -396,9 +451,9 @@ export default function ProfilePage() {
           <FormSection title="Monthly Income" hint="How much money comes in every month (before tax)" icon="💰">
             <FormRow>
               <NumberField label="Monthly Salary" value={data.income.monthlySalary} prefix="₹" onChange={(v) => updateField('income', 'monthlySalary', v)}
-                tooltip="Your monthly take-home salary (after TDS/tax deduction). This is the amount that hits your bank account." />
+                tooltip="Your monthly take-home salary (after TDS/tax deduction)." />
               <NumberField label="Other Income" value={data.income.otherIncome} prefix="₹" onChange={(v) => updateField('income', 'otherIncome', v)}
-                tooltip="Rent from property, freelance work, dividends, interest — any extra money you earn regularly each month." />
+                tooltip="Rent from property, freelance work, dividends, interest — any extra monthly income." />
             </FormRow>
             <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl">
               <p className="text-sm text-indigo-700 dark:text-indigo-400">
@@ -411,35 +466,24 @@ export default function ProfilePage() {
         {/* ────────── Expenses (dynamic) ────────── */}
         {activeSection === 'expenses' && (
           <FormSection title="Monthly Expenses" hint="Add the types of expenses you have. Remove any that don't apply." icon="🛒">
-            <div className="space-y-3">
-              {data.expenses.length === 0 && (
-                <div className="text-center py-8 text-gray-400 dark:text-gray-500">
-                  <span className="text-4xl block mb-3">🛒</span>
-                  <p className="text-sm">No expenses added yet. Click the button below to add your spending categories.</p>
-                </div>
-              )}
-
-              {data.expenses.map((item) => (
-                <ExpenseRow
-                  key={item.id}
-                  item={item}
-                  usedCategories={usedCategories}
-                  onCategoryChange={(cat) => updateExpenseCategory(item.id, cat)}
-                  onAmountChange={(amt) => updateExpenseAmount(item.id, amt)}
-                  onRemove={() => removeExpense(item.id)}
-                />
-              ))}
-            </div>
-
-            <button onClick={addExpense} type="button"
-              className="w-full mt-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm
-                         text-gray-500 dark:text-gray-400 hover:border-indigo-400 dark:hover:border-indigo-600
-                         hover:text-indigo-600 dark:hover:text-indigo-400
-                         hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30
-                         transition-all font-medium">
-              ➕ Add an Expense
-            </button>
-
+            <DynamicList
+              items={data.expenses}
+              usedCategories={usedExpenseCategories}
+              suggestions={EXPENSE_SUGGESTIONS}
+              emojiMap={EXPENSE_EMOJI}
+              tooltipMap={EXPENSE_TOOLTIPS}
+              storageKey="fa-custom-expense-categories"
+              defaultEmoji="💰"
+              categoryLabel="Category"
+              amountLabel="Amount (₹)"
+              emptyIcon="🛒"
+              emptyText="No expenses added yet. Click the button below to add your spending categories."
+              addLabel="➕ Add an Expense"
+              onAdd={() => addItem('expenses')}
+              onRemove={(id) => removeItem('expenses', id)}
+              onCategoryChange={(id, cat) => updateItemCategory('expenses', id, cat)}
+              onAmountChange={(id, amt) => updateItemAmount('expenses', id, amt)}
+            />
             {data.expenses.length > 0 && (
               <div className="mt-4 p-4 bg-orange-50 dark:bg-orange-950/40 rounded-xl border border-orange-200 dark:border-orange-800">
                 <p className="text-sm font-semibold text-orange-700 dark:text-orange-400">
@@ -450,30 +494,34 @@ export default function ProfilePage() {
           </FormSection>
         )}
 
-        {/* ────────── Savings ────────── */}
+        {/* ────────── Savings / Assets (dynamic) ────────── */}
         {activeSection === 'assets' && (
-          <FormSection title="Your Savings & Investments" hint="Everything you've saved or invested — the total value today" icon="🏦">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <NumberField label="🏦 Savings Account" value={data.assets.savingsAccount} prefix="₹" onChange={(v) => updateField('assets', 'savingsAccount', v)}
-                tooltip="Total balance in all your savings bank accounts combined. This is your most accessible money." />
-              <NumberField label="🔒 Fixed Deposits (FD)" value={data.assets.fixedDeposits} prefix="₹" onChange={(v) => updateField('assets', 'fixedDeposits', v)}
-                tooltip="Total value of all your FDs in banks. FDs give guaranteed returns but money is locked for a period." />
-              <NumberField label="📊 Mutual Funds" value={data.assets.mutualFunds} prefix="₹" onChange={(v) => updateField('assets', 'mutualFunds', v)}
-                tooltip="Current value of all your mutual fund investments (SIPs + lump sum). Check your fund app for today's value." />
-              <NumberField label="📈 Stocks / Shares" value={data.assets.stocks} prefix="₹" onChange={(v) => updateField('assets', 'stocks', v)}
-                tooltip="Current value of shares you directly own on the stock market (Zerodha, Groww, etc). Check your demat account." />
-              <NumberField label="🏛️ PPF" value={data.assets.ppf} prefix="₹" onChange={(v) => updateField('assets', 'ppf', v)}
-                tooltip="Public Provident Fund — a government savings scheme with tax benefits. Money is locked for 15 years but gives guaranteed returns." />
-              <NumberField label="🏢 EPF / PF" value={data.assets.epf} prefix="₹" onChange={(v) => updateField('assets', 'epf', v)}
-                tooltip="Employee Provident Fund — money your company deducts from salary + their contribution. Check your EPFO passbook online." />
-              <NumberField label="✨ Gold" value={data.assets.gold} prefix="₹" onChange={(v) => updateField('assets', 'gold', v)}
-                tooltip="Value of gold you own — jewellery, coins, digital gold, Sovereign Gold Bonds. Use today's market price." />
-            </div>
-            <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl">
-              <p className="text-sm text-emerald-700 dark:text-emerald-400">
-                💡 <strong>Total Savings:</strong> ₹{Object.values(data.assets).reduce((a, b) => a + b, 0).toLocaleString('en-IN')}
-              </p>
-            </div>
+          <FormSection title="Your Savings & Investments" hint="Add all your savings, investments, and assets. Remove any that don't apply." icon="🏦">
+            <DynamicList
+              items={data.assets}
+              usedCategories={usedAssetCategories}
+              suggestions={ASSET_SUGGESTIONS}
+              emojiMap={ASSET_EMOJI}
+              tooltipMap={ASSET_TOOLTIPS}
+              storageKey="fa-custom-asset-categories"
+              defaultEmoji="🏦"
+              categoryLabel="Asset Type"
+              amountLabel="Value (₹)"
+              emptyIcon="🏦"
+              emptyText="No savings added yet. Click the button below to add your savings and investments."
+              addLabel="➕ Add a Saving / Investment"
+              onAdd={() => addItem('assets')}
+              onRemove={(id) => removeItem('assets', id)}
+              onCategoryChange={(id, cat) => updateItemCategory('assets', id, cat)}
+              onAmountChange={(id, amt) => updateItemAmount('assets', id, amt)}
+            />
+            {data.assets.length > 0 && (
+              <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                  💡 Total Savings: ₹{assetTotal.toLocaleString('en-IN')}
+                </p>
+              </div>
+            )}
           </FormSection>
         )}
 
@@ -493,15 +541,15 @@ export default function ProfilePage() {
           <FormSection title="Insurance Policies" hint="Insurance protects you and your family. Enter what you have." icon="🛡️">
             <FormRow>
               <NumberField label="Term Life Cover Amount" value={data.insurance.termLifeCover} prefix="₹" onChange={(v) => updateField('insurance', 'termLifeCover', v)}
-                tooltip="How much money your family gets if something happens to you. Experts say you need 10-15x your annual income." />
+                tooltip="How much money your family gets if something happens to you. Experts say 10-15x annual income." />
               <NumberField label="Term Life Premium (monthly)" value={data.insurance.termLifePremium} prefix="₹" onChange={(v) => updateField('insurance', 'termLifePremium', v)}
                 tooltip="How much you pay each month for your term life insurance. If you pay yearly, divide by 12." />
             </FormRow>
             <FormRow>
               <NumberField label="Health Insurance Cover" value={data.insurance.healthCover} prefix="₹" onChange={(v) => updateField('insurance', 'healthCover', v)}
-                tooltip="Maximum amount your health insurance will pay for hospital bills. Get at least ₹10-20 lakh for a family." />
+                tooltip="Maximum your health insurance pays for hospital bills. Get at least ₹10-20 lakh for a family." />
               <NumberField label="Health Premium (monthly)" value={data.insurance.healthPremium} prefix="₹" onChange={(v) => updateField('insurance', 'healthPremium', v)}
-                tooltip="Monthly cost of your health insurance. If you pay yearly, divide by 12." />
+                tooltip="Monthly cost of your health insurance. If yearly, divide by 12." />
             </FormRow>
           </FormSection>
         )}
@@ -513,7 +561,7 @@ export default function ProfilePage() {
               <NumberField label="Monthly SIP Amount" value={data.investments.monthlySIP} prefix="₹" onChange={(v) => updateField('investments', 'monthlySIP', v)}
                 tooltip="SIP = Systematic Investment Plan. Money automatically invested in mutual funds every month." />
               <NumberField label="Expected Return (%)" value={data.investments.expectedReturn} onChange={(v) => updateField('investments', 'expectedReturn', v)}
-                tooltip="What % return do you expect per year? Stocks/MFs: 10-12%. FDs: 6-7%. PPF: 7-8%." />
+                tooltip="What % return per year? Stocks/MFs: 10-12%. FDs: 6-7%. PPF: 7-8%." />
             </FormRow>
           </FormSection>
         )}
@@ -583,12 +631,91 @@ export default function ProfilePage() {
   );
 }
 
-/* ================================================================
-   Expense Row — autocomplete category + amount + delete
-   ================================================================ */
-function ExpenseRow({ item, usedCategories, onCategoryChange, onAmountChange, onRemove }: {
-  item: ExpenseItem;
+/* ══════════════════════════════════════════════════════════════
+   DynamicList — renders rows + add button (shared by expenses
+   and assets)
+   ══════════════════════════════════════════════════════════════ */
+interface DynamicListProps {
+  items: DynamicItem[];
   usedCategories: string[];
+  suggestions: string[];
+  emojiMap: Record<string, string>;
+  tooltipMap: Record<string, string>;
+  storageKey: string;
+  defaultEmoji: string;
+  categoryLabel: string;
+  amountLabel: string;
+  emptyIcon: string;
+  emptyText: string;
+  addLabel: string;
+  onAdd: () => void;
+  onRemove: (id: string) => void;
+  onCategoryChange: (id: string, cat: string) => void;
+  onAmountChange: (id: string, amt: number) => void;
+}
+
+function DynamicList(props: DynamicListProps) {
+  const { items, usedCategories, suggestions, emojiMap, tooltipMap, storageKey,
+          defaultEmoji, categoryLabel, amountLabel,
+          emptyIcon, emptyText, addLabel,
+          onAdd, onRemove, onCategoryChange, onAmountChange } = props;
+
+  return (
+    <>
+      <div className="space-y-3">
+        {items.length === 0 && (
+          <div className="text-center py-8 text-gray-400 dark:text-gray-500">
+            <span className="text-4xl block mb-3">{emptyIcon}</span>
+            <p className="text-sm">{emptyText}</p>
+          </div>
+        )}
+
+        {items.map((item) => (
+          <DynamicRow
+            key={item.id}
+            item={item}
+            usedCategories={usedCategories}
+            suggestions={suggestions}
+            emojiMap={emojiMap}
+            tooltipMap={tooltipMap}
+            storageKey={storageKey}
+            defaultEmoji={defaultEmoji}
+            categoryLabel={categoryLabel}
+            amountLabel={amountLabel}
+            onCategoryChange={(cat) => onCategoryChange(item.id, cat)}
+            onAmountChange={(amt) => onAmountChange(item.id, amt)}
+            onRemove={() => onRemove(item.id)}
+          />
+        ))}
+      </div>
+
+      <button onClick={onAdd} type="button"
+        className="w-full mt-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm
+                   text-gray-500 dark:text-gray-400 hover:border-indigo-400 dark:hover:border-indigo-600
+                   hover:text-indigo-600 dark:hover:text-indigo-400
+                   hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30
+                   transition-all font-medium">
+        {addLabel}
+      </button>
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DynamicRow — autocomplete category + amount + delete
+   ══════════════════════════════════════════════════════════════ */
+function DynamicRow({ item, usedCategories, suggestions, emojiMap, tooltipMap,
+                      storageKey, defaultEmoji, categoryLabel, amountLabel,
+                      onCategoryChange, onAmountChange, onRemove }: {
+  item: DynamicItem;
+  usedCategories: string[];
+  suggestions: string[];
+  emojiMap: Record<string, string>;
+  tooltipMap: Record<string, string>;
+  storageKey: string;
+  defaultEmoji: string;
+  categoryLabel: string;
+  amountLabel: string;
   onCategoryChange: (cat: string) => void;
   onAmountChange: (amt: number) => void;
   onRemove: () => void;
@@ -597,8 +724,8 @@ function ExpenseRow({ item, usedCategories, onCategoryChange, onAmountChange, on
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const customCats = loadCustomCategories();
-  const allSuggestions = [...DEFAULT_EXPENSE_SUGGESTIONS, ...customCats.filter((c) => !DEFAULT_EXPENSE_SUGGESTIONS.includes(c))];
+  const customCats = loadCustom(storageKey);
+  const allSuggestions = [...suggestions, ...customCats.filter((c) => !suggestions.includes(c))];
   const filtered = allSuggestions.filter(
     (s) => s.toLowerCase().includes(search.toLowerCase()) && (s === item.category || !usedCategories.includes(s)),
   );
@@ -620,8 +747,8 @@ function ExpenseRow({ item, usedCategories, onCategoryChange, onAmountChange, on
     setOpen(false);
   }
 
-  const emoji = CATEGORY_EMOJI[item.category] || '💰';
-  const tooltip = CATEGORY_TOOLTIPS[item.category];
+  const emoji = emojiMap[item.category] || defaultEmoji;
+  const tooltip = tooltipMap[item.category];
 
   return (
     <div className="flex items-start gap-2 sm:gap-3 animate-fade-in">
@@ -629,7 +756,7 @@ function ExpenseRow({ item, usedCategories, onCategoryChange, onAmountChange, on
       <div className="relative flex-1 min-w-0" ref={ref}>
         <div className="flex items-center gap-1 mb-1">
           <span className="text-sm">{emoji}</span>
-          <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Category</label>
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-400">{categoryLabel}</label>
           {tooltip && <InfoTooltip text={tooltip}><span /></InfoTooltip>}
         </div>
         <input
@@ -663,7 +790,7 @@ function ExpenseRow({ item, usedCategories, onCategoryChange, onAmountChange, on
                            text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors
                            first:rounded-t-xl last:rounded-b-xl"
               >
-                <span>{CATEGORY_EMOJI[s] || '💰'}</span>
+                <span>{emojiMap[s] || defaultEmoji}</span>
                 <span>{s}</span>
               </button>
             ))}
@@ -673,14 +800,14 @@ function ExpenseRow({ item, usedCategories, onCategoryChange, onAmountChange, on
           <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
                           border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
                           px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 animate-fade-in">
-            Press <strong>Enter</strong> to use "<em>{search}</em>" as a new category
+            Press <strong>Enter</strong> to use "<em>{search}</em>" as a new type
           </div>
         )}
       </div>
 
       {/* Amount */}
       <div className="w-36 sm:w-44 shrink-0">
-        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Amount (₹)</label>
+        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">{amountLabel}</label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500 font-medium">₹</span>
           <input
@@ -704,7 +831,7 @@ function ExpenseRow({ item, usedCategories, onCategoryChange, onAmountChange, on
                      text-xs font-bold flex items-center justify-center
                      hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors
                      focus:outline-none focus:ring-2 focus:ring-red-400"
-          title="Remove this expense"
+          title="Remove this item"
         >
           ✕
         </button>
@@ -713,9 +840,9 @@ function ExpenseRow({ item, usedCategories, onCategoryChange, onAmountChange, on
   );
 }
 
-/* ================================================================
+/* ══════════════════════════════════════════════════════════════
    Reusable form helpers
-   ================================================================ */
+   ══════════════════════════════════════════════════════════════ */
 function FormSection({ title, hint, icon, children }: { title: string; hint: string; icon: string; children: React.ReactNode }) {
   return (
     <div>
@@ -794,13 +921,13 @@ function LoanSection({ title, data, onChange }: {
       <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">{title}</h4>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <NumberField label="Outstanding Amount" value={data.outstanding} prefix="₹" onChange={(v) => onChange('outstanding', v)}
-          tooltip="How much you still owe on this loan. Check your loan statement or banking app for the current outstanding principal." />
+          tooltip="How much you still owe. Check your loan statement or banking app." />
         <NumberField label="Monthly EMI" value={data.emi} prefix="₹" onChange={(v) => onChange('emi', v)}
-          tooltip="EMI = Equated Monthly Installment. The fixed amount you pay every month for this loan." />
+          tooltip="EMI = Equated Monthly Installment. The fixed amount you pay every month." />
         <NumberField label="Interest Rate (%)" value={data.rateOfInterest} onChange={(v) => onChange('rateOfInterest', v)}
-          tooltip="The annual interest rate on your loan. Home loans are usually 8-10%, car loans 9-12%." />
+          tooltip="Annual interest rate. Home loans usually 8-10%, car loans 9-12%." />
         <NumberField label="Months Remaining" value={data.remainingMonths} onChange={(v) => onChange('remainingMonths', v)}
-          tooltip="How many more monthly EMI payments until the loan is fully paid off." />
+          tooltip="How many more monthly EMI payments until fully paid off." />
       </div>
     </div>
   );
