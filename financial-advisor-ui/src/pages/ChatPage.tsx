@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { sendMessage } from '@/api/chat';
+import { useChatPrefill } from '@/context/ChatPrefillContext';
 import ChatMessage from '@/components/ChatMessage';
 import type { ChatResponse } from '@/types/api';
 
@@ -38,6 +39,18 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { consumePrefill } = useChatPrefill();
+  const prefillConsumed = useRef(false);
+
+  useEffect(() => {
+    if (prefillConsumed.current) return;
+    const prefill = consumePrefill();
+    if (prefill) {
+      prefillConsumed.current = true;
+      setInput(prefill);
+      setShowSuggestions(false);
+    }
+  }, [consumePrefill]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

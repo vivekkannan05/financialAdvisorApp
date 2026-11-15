@@ -1,4 +1,6 @@
+import { useNavigate } from 'react-router-dom';
 import type { DimensionStatus } from '@/types/api';
+import { useChatPrefill } from '@/context/ChatPrefillContext';
 import InfoTooltip from './InfoTooltip';
 
 const statusConfig: Record<string, { bg: string; border: string; text: string; badge: string; emoji: string }> = {
@@ -53,10 +55,39 @@ const statusLabels: Record<string, string> = {
   moderate: 'Balanced',
 };
 
+function buildAdvisorPrompt(actionText: string): string {
+  const lower = actionText.toLowerCase();
+
+  if (lower.includes('emergency fund')) {
+    return `My dashboard says my emergency fund is low. ${actionText} — What's the best strategy to build this up without hurting my other goals?`;
+  }
+  if (lower.includes('loans') || lower.includes('debt')) {
+    return `My dashboard flagged my debt level: ${actionText} — Should I focus on paying off debt first, or keep investing for my goals? What's the right balance?`;
+  }
+  if (lower.includes('spending more than')) {
+    return `My dashboard says I have a cash flow deficit — I'm spending more than I earn. How should I fix this? Where should I cut back?`;
+  }
+  if (lower.includes('no money set aside')) {
+    return `${actionText} — I haven't started saving for this yet. What type of investment should I start with, and how much per month?`;
+  }
+  if (lower.includes('% funded') || lower.includes('underfunded')) {
+    return `${actionText} — Is this realistic? What changes should I make to get on track?`;
+  }
+
+  return `My dashboard flagged this: "${actionText}" — What should I do about it?`;
+}
+
 export default function DimensionCard({ dim }: { dim: DimensionStatus }) {
   const cfg = statusConfig[dim.status] ?? statusConfig.none;
   const meta = dimensionMeta[dim.index] ?? { icon: '📋', friendlyName: dim.name, tooltip: '' };
   const friendlyStatus = statusLabels[dim.status] ?? dim.status;
+  const navigate = useNavigate();
+  const { setPrefill } = useChatPrefill();
+
+  function discussWithAdvisor(actionText: string) {
+    setPrefill(buildAdvisorPrompt(actionText));
+    navigate('/chat');
+  }
 
   return (
     <div className={`rounded-2xl border-2 ${cfg.border} ${cfg.bg} p-5 transition-all duration-300
@@ -81,12 +112,23 @@ export default function DimensionCard({ dim }: { dim: DimensionStatus }) {
 
       {/* Action items */}
       {dim.actions.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-200/60 dark:border-gray-700/60 space-y-1.5">
+        <div className="mt-3 pt-3 border-t border-gray-200/60 dark:border-gray-700/60 space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">What to do:</p>
           {dim.actions.map((action, i) => (
             <div key={i} className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
-              <span className="mt-0.5 text-indigo-500 dark:text-indigo-400">👉</span>
-              <span>{action}</span>
+              <span className="mt-0.5 text-indigo-500 dark:text-indigo-400 shrink-0">👉</span>
+              <div className="flex-1 space-y-1">
+                <span>{action}</span>
+                <button
+                  onClick={() => discussWithAdvisor(action)}
+                  className="flex items-center gap-1 text-[11px] font-medium
+                             text-indigo-500 dark:text-indigo-400
+                             hover:text-indigo-700 dark:hover:text-indigo-300
+                             hover:underline transition-colors mt-0.5"
+                >
+                  <span>💬</span> Discuss with Advisor
+                </button>
+              </div>
             </div>
           ))}
         </div>

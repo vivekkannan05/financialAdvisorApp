@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { ChatPrefillProvider } from '@/context/ChatPrefillContext';
 import Layout from '@/components/Layout';
 import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
@@ -45,7 +46,9 @@ export default function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <AppRoutes />
+          <ChatPrefillProvider>
+            <AppRoutes />
+          </ChatPrefillProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
