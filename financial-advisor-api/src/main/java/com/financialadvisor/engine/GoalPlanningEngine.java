@@ -102,22 +102,30 @@ public class GoalPlanningEngine {
     /**
      * Calculates current funding for a goal by summing assets tagged with the goalId (FR-3.7).
      * Each asset has exactly one goalTag — no double-counting.
+     * Comparison normalises both sides (lowercase, spaces → hyphens) so
+     * "Emergency Fund", "emergency-fund", and "emergency fund" all match.
      */
     @SuppressWarnings("unchecked")
     private BigDecimal calculateGoalFunding(String goalId, Map<String, Object> assets) {
         if (goalId == null) return BigDecimal.ZERO;
+
+        String normGoalId = normalizeGoalId(goalId);
 
         BigDecimal total = BigDecimal.ZERO;
         for (Map.Entry<String, Object> entry : assets.entrySet()) {
             if (entry.getValue() instanceof Map<?, ?> assetMap) {
                 Map<String, Object> asset = (Map<String, Object>) assetMap;
                 String tag = getString(asset, "goalTag");
-                if (goalId.equals(tag)) {
+                if (tag != null && normGoalId.equals(normalizeGoalId(tag))) {
                     BigDecimal value = getBigDecimal(asset, "value");
                     if (value != null) total = total.add(value);
                 }
             }
         }
         return total;
+    }
+
+    private static String normalizeGoalId(String s) {
+        return s.toLowerCase().replaceAll("[\\s_]+", "-");
     }
 }

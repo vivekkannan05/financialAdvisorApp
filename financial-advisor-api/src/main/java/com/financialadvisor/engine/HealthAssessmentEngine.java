@@ -257,7 +257,9 @@ public class HealthAssessmentEngine {
     private boolean isEmergencyTagged(Object asset) {
         if (asset instanceof Map<?, ?> map) {
             String tag = getString((Map<String, Object>) map, "goalTag");
-            return "emergency".equalsIgnoreCase(tag);
+            if (tag == null) return false;
+            String lower = tag.toLowerCase();
+            return lower.contains("emergency");
         }
         return false;
     }

@@ -10,6 +10,13 @@ interface DynamicItem {
   amount: number;
 }
 
+interface AssetItem {
+  id: string;
+  category: string;
+  amount: number;
+  goal: string;
+}
+
 interface LoanItem {
   id: string;
   loanType: string;
@@ -34,13 +41,14 @@ interface InvestmentItem {
   amount: number;
   frequency: string;
   expectedReturn: number;
+  goal: string;
 }
 
 interface ProfileData {
   personal: { age: number; retirementAge: number; riskTolerance: string; city: string; dependents: number };
   income: { monthlySalary: number; otherIncome: number };
   expenses: DynamicItem[];
-  assets: DynamicItem[];
+  assets: AssetItem[];
   liabilities: LoanItem[];
   insurance: InsuranceItem[];
   investments: InvestmentItem[];
@@ -435,6 +443,48 @@ function itemsToObject(items: DynamicItem[], storageKey: string, defaults: strin
   return obj;
 }
 
+function parseAssets(raw: unknown, keyMap: Record<string, string>): AssetItem[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return (raw as AssetItem[]).map((a) => ({
+      id: a.id || uid(),
+      category: String(a.category || ''),
+      amount: Number(a.amount) || 0,
+      goal: String(a.goal || ''),
+    }));
+  }
+  const obj = raw as Record<string, unknown>;
+  return Object.entries(obj)
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([key, value]) => {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const m = value as Record<string, unknown>;
+        return {
+          id: uid(),
+          category: keyMap[key] || key,
+          amount: Number(m.value ?? m.amount ?? 0) || 0,
+          goal: String(m.goalTag || ''),
+        };
+      }
+      return { id: uid(), category: keyMap[key] || key, amount: Number(value) || 0, goal: '' };
+    });
+}
+
+function assetsToObject(assets: AssetItem[]): Record<string, unknown> {
+  const obj: Record<string, unknown> = {};
+  assets.forEach((a) => {
+    if (a.category.trim() && a.amount > 0) {
+      const base = a.category.trim();
+      let finalKey = a.goal ? `${base} — ${a.goal}` : base;
+      let counter = 2;
+      while (obj[finalKey]) { finalKey = `${a.goal ? `${base} — ${a.goal}` : base} (${counter})`; counter++; }
+      obj[finalKey] = { value: a.amount, goalTag: a.goal || '' };
+      saveCustom('fa-custom-asset-categories', ASSET_SUGGESTIONS, base);
+    }
+  });
+  return obj;
+}
+
 function loansToObject(loans: LoanItem[]): Record<string, Record<string, number>> {
   const obj: Record<string, Record<string, number>> = {};
   loans.forEach((l) => {
@@ -459,7 +509,7 @@ function parseInsurance(raw: unknown, keyMap: Record<string, string>): Insurance
       policyType: String(p.policyType || ''),
       coverAmount: Number(p.coverAmount) || 0,
       premium: Number(p.premium) || 0,
-      premiumFrequency: String(p.premiumFrequency || 'Monthly'),
+      premiumFrequency: capitalizeFrequency(String(p.premiumFrequency || 'Monthly')),
     }));
   }
   const obj = raw as Record<string, unknown>;
@@ -473,7 +523,7 @@ function parseInsurance(raw: unknown, keyMap: Record<string, string>): Insurance
         policyType: keyMap[key] || key,
         coverAmount: Number(pol.cover ?? pol.coverAmount ?? 0) || 0,
         premium: Number(pol.premium ?? 0) || 0,
-        premiumFrequency: String(pol.premiumFrequency || 'Monthly'),
+        premiumFrequency: capitalizeFrequency(String(pol.premiumFrequency || 'Monthly')),
       });
       coverKeys.add(key);
     }
@@ -500,7 +550,7 @@ function insuranceToObject(policies: InsuranceItem[]): Record<string, Record<str
       obj[p.policyType.trim()] = {
         cover: p.coverAmount,
         premium: p.premium,
-        premiumFrequency: p.premiumFrequency.toLowerCase(),
+        premiumFrequency: p.premiumFrequency,
       };
       saveCustom('fa-custom-insurance-types', INSURANCE_SUGGESTIONS, p.policyType.trim());
     }
@@ -523,8 +573,9 @@ function parseInvestments(raw: unknown, keyMap: Record<string, string>): Investm
         instrument: inst,
         name: String(inv.name || ''),
         amount: Number(inv.amount) || 0,
-        frequency: String(inv.frequency || 'Monthly'),
+        frequency: capitalizeFrequency(String(inv.frequency || 'Monthly')),
         expectedReturn: resolveReturn(inst, Number(inv.expectedReturn)),
+        goal: String(inv.goal || (inv as unknown as Record<string, unknown>).goalTag || ''),
       };
     });
   }
@@ -540,15 +591,16 @@ function parseInvestments(raw: unknown, keyMap: Record<string, string>): Investm
         instrument: inst,
         name: schemeName || (keyMap[key] ? '' : (inst === key ? '' : key)),
         amount: Number(inv.amount ?? 0) || 0,
-        frequency: String(inv.frequency || 'Monthly'),
+        frequency: capitalizeFrequency(String(inv.frequency || 'Monthly')),
         expectedReturn: resolveReturn(inst, Number(inv.expectedReturn ?? inv.expectedReturnRate ?? 0)),
+        goal: String(inv.goalTag || ''),
       });
     }
   }
   if (items.length === 0) {
     const sip = Number(obj.monthlySIP ?? 0) || 0;
     if (sip > 0) {
-      items.push({ id: uid(), instrument: 'SIP (Mutual Funds)', name: '', amount: sip, frequency: 'Monthly', expectedReturn: 12 });
+      items.push({ id: uid(), instrument: 'SIP (Mutual Funds)', name: '', amount: sip, frequency: 'Monthly', expectedReturn: 12, goal: '' });
     }
   }
   return items;
@@ -557,6 +609,14 @@ function parseInvestments(raw: unknown, keyMap: Record<string, string>): Investm
 const FREQ_MONTHLY_DIVISOR: Record<string, number> = {
   monthly: 1, quarterly: 3, 'half-yearly': 6, yearly: 12,
 };
+
+const CANONICAL_FREQ: Record<string, string> = {
+  monthly: 'Monthly', quarterly: 'Quarterly', 'half-yearly': 'Half-Yearly', yearly: 'Yearly',
+};
+
+function capitalizeFrequency(freq: string): string {
+  return CANONICAL_FREQ[freq.toLowerCase()] ?? freq;
+}
 
 function monthlyEquivalent(amount: number, frequency: string): number {
   const divisor = FREQ_MONTHLY_DIVISOR[frequency.toLowerCase()] ?? 1;
@@ -575,8 +635,9 @@ function investmentsToObject(investments: InvestmentItem[]): Record<string, unkn
         instrument: inv.instrument.trim(),
         name: inv.name.trim(),
         amount: inv.amount,
-        frequency: inv.frequency.toLowerCase(),
+        frequency: inv.frequency,
         expectedReturn: inv.expectedReturn,
+        goalTag: inv.goal || '',
       };
       saveCustom('fa-custom-investment-instruments', INVESTMENT_SUGGESTIONS, inv.instrument.trim());
     }
@@ -642,7 +703,7 @@ export default function ProfilePage() {
       },
       income: coerceNumbers(base.income, incoming?.income as Record<string, unknown>),
       expenses: parseItems(incoming?.expenses, EXPENSE_KEY_MAP),
-      assets: parseItems(incoming?.assets, ASSET_KEY_MAP),
+      assets: parseAssets(incoming?.assets, ASSET_KEY_MAP),
       liabilities: parseLoans(incoming?.liabilities, LOAN_KEY_MAP),
       insurance: parseInsurance(incoming?.insurance, INSURANCE_KEY_MAP),
       investments: parseInvestments(incoming?.investments, INVESTMENT_KEY_MAP),
@@ -659,7 +720,7 @@ export default function ProfilePage() {
       const payload = {
         ...data,
         expenses: itemsToObject(data.expenses, 'fa-custom-expense-categories', EXPENSE_SUGGESTIONS),
-        assets: itemsToObject(data.assets, 'fa-custom-asset-categories', ASSET_SUGGESTIONS),
+        assets: assetsToObject(data.assets),
         liabilities: loansToObject(data.liabilities),
         insurance: insuranceToObject(data.insurance),
         investments: investmentsToObject(data.investments),
@@ -689,18 +750,29 @@ export default function ProfilePage() {
     });
   }
 
-  /* ── Dynamic-list mutators (expenses & assets) ──────────── */
-  function addItem(list: 'expenses' | 'assets') {
-    setData((prev) => ({ ...prev, [list]: [...prev[list], { id: uid(), category: '', amount: 0 }] }));
+  /* ── Dynamic-list mutators (expenses) ────────────────────── */
+  function addExpense() {
+    setData((prev) => ({ ...prev, expenses: [...prev.expenses, { id: uid(), category: '', amount: 0 }] }));
   }
-  function removeItem(list: 'expenses' | 'assets', id: string) {
-    setData((prev) => ({ ...prev, [list]: prev[list].filter((e) => e.id !== id) }));
+  function removeExpense(id: string) {
+    setData((prev) => ({ ...prev, expenses: prev.expenses.filter((e) => e.id !== id) }));
   }
-  function updateItemCategory(list: 'expenses' | 'assets', id: string, category: string) {
-    setData((prev) => ({ ...prev, [list]: prev[list].map((e) => (e.id === id ? { ...e, category } : e)) }));
+  function updateExpenseCategory(id: string, category: string) {
+    setData((prev) => ({ ...prev, expenses: prev.expenses.map((e) => (e.id === id ? { ...e, category } : e)) }));
   }
-  function updateItemAmount(list: 'expenses' | 'assets', id: string, amount: number) {
-    setData((prev) => ({ ...prev, [list]: prev[list].map((e) => (e.id === id ? { ...e, amount } : e)) }));
+  function updateExpenseAmount(id: string, amount: number) {
+    setData((prev) => ({ ...prev, expenses: prev.expenses.map((e) => (e.id === id ? { ...e, amount } : e)) }));
+  }
+
+  /* ── Asset mutators (savings) ───────────────────────────── */
+  function addAsset() {
+    setData((prev) => ({ ...prev, assets: [...prev.assets, { id: uid(), category: '', amount: 0, goal: '' }] }));
+  }
+  function removeAsset(id: string) {
+    setData((prev) => ({ ...prev, assets: prev.assets.filter((a) => a.id !== id) }));
+  }
+  function updateAssetField(id: string, field: string, value: string | number) {
+    setData((prev) => ({ ...prev, assets: prev.assets.map((a) => (a.id === id ? { ...a, [field]: value } : a)) }));
   }
 
   /* ── Loan mutators ──────────────────────────────────────── */
@@ -747,7 +819,7 @@ export default function ProfilePage() {
   function addInvestment() {
     setData((prev) => ({
       ...prev,
-      investments: [...prev.investments, { id: uid(), instrument: '', name: '', amount: 0, frequency: 'Monthly', expectedReturn: 0 }],
+      investments: [...prev.investments, { id: uid(), instrument: '', name: '', amount: 0, frequency: 'Monthly', expectedReturn: 0, goal: '' }],
     }));
   }
   function removeInvestment(id: string) {
@@ -804,9 +876,9 @@ export default function ProfilePage() {
     { id: 'goals', icon: '🎯', label: 'Goals' },
   ];
 
+  const goalNames = data.goals.map((g) => g.name).filter(Boolean);
   const usedExpenseCategories = data.expenses.map((e) => e.category).filter(Boolean);
   const expenseTotal = data.expenses.reduce((sum, e) => sum + e.amount, 0);
-  const usedAssetCategories = data.assets.map((a) => a.category).filter(Boolean);
   const assetTotal = data.assets.reduce((sum, a) => sum + a.amount, 0);
   const usedLoanTypes = data.liabilities.map((l) => l.loanType).filter(Boolean);
   const totalEmi = data.liabilities.reduce((sum, l) => sum + l.emi, 0);
@@ -923,25 +995,40 @@ export default function ProfilePage() {
               categoryLabel="Category" amountLabel="Amount (₹)"
               emptyIcon="🛒" emptyText="No expenses added yet. Click below to add your spending."
               addLabel="➕ Add an Expense"
-              onAdd={() => addItem('expenses')} onRemove={(id) => removeItem('expenses', id)}
-              onCategoryChange={(id, cat) => updateItemCategory('expenses', id, cat)}
-              onAmountChange={(id, amt) => updateItemAmount('expenses', id, amt)} />
+              onAdd={addExpense} onRemove={removeExpense}
+              onCategoryChange={updateExpenseCategory}
+              onAmountChange={updateExpenseAmount} />
             {data.expenses.length > 0 && <TotalBar color="orange" label="Total Monthly Expenses" value={expenseTotal} />}
           </FormSection>
         )}
 
         {/* ── Savings / Assets (dynamic) ── */}
         {activeSection === 'assets' && (
-          <FormSection title="Your Savings & Investments" hint="Add all your savings, investments, and assets." icon="🏦">
-            <DynamicList items={data.assets} usedCategories={usedAssetCategories}
-              suggestions={ASSET_SUGGESTIONS} emojiMap={ASSET_EMOJI} tooltipMap={ASSET_TOOLTIPS}
-              storageKey="fa-custom-asset-categories" defaultEmoji="🏦"
-              categoryLabel="Asset Type" amountLabel="Value (₹)"
-              emptyIcon="🏦" emptyText="No savings added yet. Click below to add your savings and investments."
-              addLabel="➕ Add a Saving / Investment"
-              onAdd={() => addItem('assets')} onRemove={(id) => removeItem('assets', id)}
-              onCategoryChange={(id, cat) => updateItemCategory('assets', id, cat)}
-              onAmountChange={(id, amt) => updateItemAmount('assets', id, amt)} />
+          <FormSection title="Your Savings & Assets" hint="Add all your savings & assets. Tag each to a goal for progress tracking." icon="🏦">
+            <div className="space-y-4">
+              {data.assets.length === 0 && (
+                <div className="text-center py-8 text-gray-400 dark:text-gray-500">
+                  <span className="text-4xl block mb-3">🏦</span>
+                  <p className="text-sm">No savings added yet. Click below to add your savings and assets.</p>
+                </div>
+              )}
+              {data.assets.map((asset) => (
+                <AssetCard
+                  key={asset.id}
+                  asset={asset}
+                  goalNames={goalNames}
+                  onFieldChange={(f, v) => updateAssetField(asset.id, f, v)}
+                  onRemove={() => removeAsset(asset.id)}
+                />
+              ))}
+            </div>
+            <button onClick={addAsset} type="button"
+              className="w-full mt-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm
+                         text-gray-500 dark:text-gray-400 hover:border-indigo-400 dark:hover:border-indigo-600
+                         hover:text-indigo-600 dark:hover:text-indigo-400
+                         hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-all font-medium">
+              ➕ Add a Saving / Asset
+            </button>
             {data.assets.length > 0 && <TotalBar color="emerald" label="Total Savings" value={assetTotal} />}
           </FormSection>
         )}
@@ -1049,6 +1136,7 @@ export default function ProfilePage() {
                 <InvestmentCard
                   key={inv.id}
                   investment={inv}
+                  goalNames={goalNames}
                   onInstrumentChange={(t) => updateInvestmentInstrument(inv.id, t)}
                   onFieldChange={(f, v) => updateInvestmentField(inv.id, f, v)}
                   onRemove={() => removeInvestment(inv.id)}
@@ -1351,8 +1439,9 @@ function InsuranceCard({ policy, usedTypes, onTypeChange, onFieldChange, onRemov
 /* ══════════════════════════════════════════════════════════════
    InvestmentCard — instrument + fund name + amount/frequency + delete
    ══════════════════════════════════════════════════════════════ */
-function InvestmentCard({ investment, onInstrumentChange, onFieldChange, onRemove }: {
+function InvestmentCard({ investment, goalNames, onInstrumentChange, onFieldChange, onRemove }: {
   investment: InvestmentItem;
+  goalNames: string[];
   onInstrumentChange: (t: string) => void;
   onFieldChange: (field: string, value: number | string) => void;
   onRemove: () => void;
@@ -1463,6 +1552,12 @@ function InvestmentCard({ investment, onInstrumentChange, onFieldChange, onRemov
           </select>
         </div>
       </div>
+      {/* Goal tagging row */}
+      <div className="mt-4">
+        <GoalTagSelect value={investment.goal} goalNames={goalNames}
+          onChange={(v) => onFieldChange('goal', v)} />
+      </div>
+
       {investment.instrument && (
         <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
           📈 Assumed return: ~{INSTRUMENT_DEFAULT_RETURN[investment.instrument] ?? 10}% p.a.
@@ -1572,7 +1667,133 @@ function SchemeNameField({ instrument, value, onChange }: {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   DynamicList — renders rows + add button (expenses & assets)
+   GoalTagSelect — reusable goal dropdown for assets & investments
+   ══════════════════════════════════════════════════════════════ */
+function GoalTagSelect({ value, goalNames, onChange }: {
+  value: string; goalNames: string[]; onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-1 mb-1.5">
+        <span className="text-sm">🎯</span>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Tagged to Goal</label>
+        <InfoTooltip text="Tag this to a goal so the dashboard can track progress. Leave 'None' if untagged."><span /></InfoTooltip>
+      </div>
+      <select value={value} onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                   bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-100
+                   focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all">
+        <option value="">— None —</option>
+        {goalNames.map((g) => <option key={g} value={g}>{g}</option>)}
+      </select>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   AssetCard — asset type autocomplete + amount + goal tag + delete
+   ══════════════════════════════════════════════════════════════ */
+function AssetCard({ asset, goalNames, onFieldChange, onRemove }: {
+  asset: AssetItem;
+  goalNames: string[];
+  onFieldChange: (field: string, value: string | number) => void;
+  onRemove: () => void;
+}) {
+  const [search, setSearch] = useState(asset.category);
+  const [open, setOpen] = useState(false);
+  const [hlIdx, setHlIdx] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const customCats = loadCustom('fa-custom-asset-categories');
+  const allSuggestions = [...ASSET_SUGGESTIONS, ...customCats.filter((c) => !ASSET_SUGGESTIONS.includes(c))];
+  const filtered = allSuggestions.filter(
+    (s) => s.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  useEffect(() => { setHlIdx(0); }, [filtered.length]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        if (search !== asset.category) onFieldChange('category', search);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [search, asset.category, onFieldChange]);
+
+  function selectCategory(cat: string) { setSearch(cat); onFieldChange('category', cat); setOpen(false); }
+  function scrollHL(idx: number) { const items = listRef.current?.children; if (items?.[idx]) (items[idx] as HTMLElement).scrollIntoView({ block: 'nearest' }); }
+
+  const emoji = ASSET_EMOJI[asset.category] || '🏦';
+  const tooltip = ASSET_TOOLTIPS[asset.category];
+
+  return (
+    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl relative animate-fade-in">
+      <button type="button" onClick={onRemove}
+        className="absolute top-3 right-3 w-7 h-7 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400
+                   text-xs font-bold flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors"
+        title="Remove this asset">✕</button>
+
+      {/* Asset type + goal row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <div className="relative" ref={ref}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-lg">{emoji}</span>
+            <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Asset Type</label>
+            {tooltip && <InfoTooltip text={tooltip}><span /></InfoTooltip>}
+          </div>
+          <input type="text" value={search}
+            onChange={(e) => { setSearch(e.target.value); setOpen(true); setHlIdx(0); }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown' && open && filtered.length > 0) { e.preventDefault(); const n = (hlIdx + 1) % filtered.length; setHlIdx(n); scrollHL(n); }
+              else if (e.key === 'ArrowUp' && open && filtered.length > 0) { e.preventDefault(); const n = (hlIdx - 1 + filtered.length) % filtered.length; setHlIdx(n); scrollHL(n); }
+              else if (e.key === 'Enter') { e.preventDefault(); if (open && filtered.length > 0) selectCategory(filtered[hlIdx] || filtered[0]); else { onFieldChange('category', search); setOpen(false); } }
+              else if (e.key === 'Escape') setOpen(false);
+            }}
+            placeholder="Type to search..."
+            className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm
+                       bg-white dark:bg-gray-800 dark:text-gray-100
+                       focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all" />
+          {open && filtered.length > 0 && (
+            <div ref={listRef} className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+                            border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
+                            max-h-48 overflow-y-auto animate-fade-in">
+              {filtered.map((s, i) => (
+                <button key={s} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => selectCategory(s)}
+                  onMouseEnter={() => setHlIdx(i)}
+                  className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 transition-colors first:rounded-t-xl last:rounded-b-xl
+                    ${i === hlIdx ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}>
+                  <span>{ASSET_EMOJI[s] || '🏦'}</span><span>{s}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {open && filtered.length === 0 && search.trim() && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700
+                            border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl
+                            px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 animate-fade-in">
+              Press <strong>Enter</strong> to use &ldquo;<em>{search}</em>&rdquo; as a new type
+            </div>
+          )}
+        </div>
+        <GoalTagSelect value={asset.goal} goalNames={goalNames}
+          onChange={(v) => onFieldChange('goal', v)} />
+      </div>
+
+      {/* Amount */}
+      <NumberField label="Current Value" value={asset.amount} prefix="₹"
+        onChange={(v) => onFieldChange('amount', v)}
+        tooltip="The current market value or balance of this asset." />
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DynamicList — renders rows + add button (expenses only)
    ══════════════════════════════════════════════════════════════ */
 interface DynamicListProps {
   items: DynamicItem[]; usedCategories: string[]; suggestions: string[];
