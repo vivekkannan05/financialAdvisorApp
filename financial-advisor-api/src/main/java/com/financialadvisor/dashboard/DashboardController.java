@@ -171,6 +171,7 @@ public class DashboardController {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> loanMap = (Map<String, Object>) loan;
                     BigDecimal emi = getBigDecimal(loanMap, "emiAmount");
+                    if (emi == null) emi = getBigDecimal(loanMap, "emi");
                     if (emi != null) housingEMI = housingEMI.add(emi);
                 }
             }

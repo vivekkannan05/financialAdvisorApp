@@ -150,7 +150,14 @@ public class HealthAssessmentEngine {
     BigDecimal calculateMandatoryMonthlyExpense(Map<String, Object> profileData) {
         Map<String, Object> expenses = getSection(profileData, "expenses");
         BigDecimal monthlyExpense = getBigDecimal(expenses, "monthlyHousehold");
-        if (monthlyExpense == null) monthlyExpense = BigDecimal.ZERO;
+
+        if (monthlyExpense == null) {
+            monthlyExpense = BigDecimal.ZERO;
+            for (Map.Entry<String, Object> entry : expenses.entrySet()) {
+                BigDecimal value = FinancialMathUtil.toBigDecimal(entry.getValue());
+                if (value != null) monthlyExpense = monthlyExpense.add(value);
+            }
+        }
 
         BigDecimal emiTotal = calculateMonthlyEMIs(profileData);
         BigDecimal insuranceTotal = calculateMonthlyInsurance(profileData);
@@ -167,6 +174,7 @@ public class HealthAssessmentEngine {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> liabMap = (Map<String, Object>) liab;
                 BigDecimal emi = getBigDecimal(liabMap, "emiAmount");
+                if (emi == null) emi = getBigDecimal(liabMap, "emi");
                 if (emi != null) total = total.add(emi);
             }
         }
@@ -189,6 +197,9 @@ public class HealthAssessmentEngine {
                     premium = premium.divide(BigDecimal.valueOf(12), 2, FinancialMathUtil.ROUNDING_MODE);
                 }
                 total = total.add(premium);
+            } else if (entry.getKey().toLowerCase().endsWith("premium")) {
+                BigDecimal premium = FinancialMathUtil.toBigDecimal(entry.getValue());
+                if (premium != null) total = total.add(premium);
             }
         }
         return total;
@@ -208,6 +219,8 @@ public class HealthAssessmentEngine {
             Map<String, Object> liabMap = (Map<String, Object>) map;
             BigDecimal principal = getBigDecimal(liabMap, "principal");
             if (principal != null) return principal;
+            BigDecimal outstanding = getBigDecimal(liabMap, "outstanding");
+            if (outstanding != null) return outstanding;
             return getBigDecimal(liabMap, "value");
         }
         return FinancialMathUtil.toBigDecimal(liability);

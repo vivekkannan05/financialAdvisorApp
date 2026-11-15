@@ -131,11 +131,18 @@ public class StressTestEngine {
 
         for (Map.Entry<String, Object> entry : assets.entrySet()) {
             String name = entry.getKey().toLowerCase();
-            if (isEquityAsset(name) && entry.getValue() instanceof Map<?, ?> asset) {
-                Map<String, Object> assetMap = (Map<String, Object>) asset;
-                BigDecimal value = getBigDecimal(assetMap, "value");
-                if (value != null) {
-                    assetMap.put("value", FinancialMathUtil.roundInr(value.multiply(remaining)));
+            if (isEquityAsset(name)) {
+                if (entry.getValue() instanceof Map<?, ?> asset) {
+                    Map<String, Object> assetMap = (Map<String, Object>) asset;
+                    BigDecimal value = getBigDecimal(assetMap, "value");
+                    if (value != null) {
+                        assetMap.put("value", FinancialMathUtil.roundInr(value.multiply(remaining)));
+                    }
+                } else {
+                    BigDecimal value = FinancialMathUtil.toBigDecimal(entry.getValue());
+                    if (value != null) {
+                        assets.put(entry.getKey(), FinancialMathUtil.roundInr(value.multiply(remaining)));
+                    }
                 }
             }
         }
@@ -152,9 +159,14 @@ public class StressTestEngine {
             if (entry.getValue() instanceof Map<?, ?> liab) {
                 Map<String, Object> liabMap = (Map<String, Object>) liab;
                 BigDecimal emi = getBigDecimal(liabMap, "emiAmount");
+                String emiKey = "emiAmount";
+                if (emi == null) {
+                    emi = getBigDecimal(liabMap, "emi");
+                    emiKey = "emi";
+                }
                 if (emi != null) {
                     BigDecimal factor = BigDecimal.ONE.add(rateChange.multiply(BigDecimal.valueOf(5)));
-                    liabMap.put("emiAmount", FinancialMathUtil.roundInr(emi.multiply(factor)));
+                    liabMap.put(emiKey, FinancialMathUtil.roundInr(emi.multiply(factor)));
                 }
             }
         }
@@ -178,6 +190,13 @@ public class StressTestEngine {
                 if (value != null && value.signum() > 0) {
                     BigDecimal deduction = value.min(remaining);
                     assetMap.put("value", FinancialMathUtil.roundInr(value.subtract(deduction)));
+                    remaining = remaining.subtract(deduction);
+                }
+            } else {
+                BigDecimal value = FinancialMathUtil.toBigDecimal(entry.getValue());
+                if (value != null && value.signum() > 0) {
+                    BigDecimal deduction = value.min(remaining);
+                    assets.put(entry.getKey(), FinancialMathUtil.roundInr(value.subtract(deduction)));
                     remaining = remaining.subtract(deduction);
                 }
             }

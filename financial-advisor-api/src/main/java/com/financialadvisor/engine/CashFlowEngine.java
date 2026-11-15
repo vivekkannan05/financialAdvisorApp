@@ -74,6 +74,7 @@ public class CashFlowEngine {
         if (salary == null) salary = BigDecimal.ZERO;
 
         BigDecimal other = getBigDecimal(income, "otherMonthlyIncome");
+        if (other == null) other = getBigDecimal(income, "otherIncome");
         if (other == null) other = BigDecimal.ZERO;
 
         return salary.add(other);
@@ -81,8 +82,18 @@ public class CashFlowEngine {
 
     private BigDecimal calculateMonthlyExpenses(Map<String, Object> profileData) {
         Map<String, Object> expenses = getSection(profileData, "expenses");
+
         BigDecimal monthly = getBigDecimal(expenses, "monthlyHousehold");
-        return (monthly != null) ? monthly : BigDecimal.ZERO;
+        if (monthly != null) return monthly;
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (Map.Entry<String, Object> entry : expenses.entrySet()) {
+            BigDecimal value = FinancialMathUtil.toBigDecimal(entry.getValue());
+            if (value != null) {
+                total = total.add(value);
+            }
+        }
+        return total;
     }
 
     private BigDecimal calculateMonthlyEMIs(Map<String, Object> profileData) {
@@ -99,6 +110,7 @@ public class CashFlowEngine {
                 }
 
                 BigDecimal emi = getBigDecimal(liabMap, "emiAmount");
+                if (emi == null) emi = getBigDecimal(liabMap, "emi");
                 if (emi != null) total = total.add(emi);
             }
         }
@@ -121,6 +133,9 @@ public class CashFlowEngine {
                     premium = premium.divide(BigDecimal.valueOf(12), 2, FinancialMathUtil.ROUNDING_MODE);
                 }
                 total = total.add(premium);
+            } else if (entry.getKey().toLowerCase().endsWith("premium")) {
+                BigDecimal premium = FinancialMathUtil.toBigDecimal(entry.getValue());
+                if (premium != null) total = total.add(premium);
             }
         }
         return total;
