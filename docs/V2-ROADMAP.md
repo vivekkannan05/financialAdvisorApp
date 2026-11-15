@@ -120,7 +120,27 @@ V1 uses static expected return rates. V2 can integrate live data.
 - Offline mode for viewing last dashboard snapshot
 
 
-## 8. Multi-Language Support
+## 8. Evaluate Database Strategy for Cross-User Queries
+
+**Priority:** Medium (before Family Profiles)  
+**Identified during:** DB design review — SQL vs NoSQL analysis  
+
+V1's DynamoDB single-table design is optimal for the current user-scoped access patterns (key-based lookups, snapshot versioning, flexible schema). However, V2 features — especially Family Profiles & Linking (#1) and potential admin analytics — may introduce cross-user queries that DynamoDB handles less efficiently.
+
+### V2 Scope
+- **Assess query needs**: Does family aggregation (combined net worth, total insurance gaps) require cross-partition queries?
+- **Option A — Stay DynamoDB**: Add a `FAMILY#<familyId>` GSI to group linked profiles; works well for family-scoped lookups
+- **Option B — Hybrid**: Keep DynamoDB for profile storage (its sweet spot), add a lightweight analytics layer (e.g., Athena, Aurora Serverless) for admin reporting and cross-user aggregations
+- **Option C — Migrate to SQL**: Only if V2 adds heavy relational needs (admin dashboards, multi-user comparisons, complex reporting) — high migration cost
+- **Decision criteria**: number of cross-user access patterns, query complexity, operational overhead tolerance, cost at scale
+
+### V1 Status
+- DynamoDB single-table with `PK=USER#<userId>`, `SK=SNAPSHOT#<snapshotId>`, GSI for latest snapshot
+- All queries are key-based (get profile, save profile, get history) — no cross-user needs
+- No ad-hoc queries, no joins, no aggregations — DynamoDB is the right fit for V1
+
+
+## 9. Multi-Language Support
 
 **Priority:** Low  
 **Identified during:** India financial context  
@@ -134,4 +154,5 @@ V1 uses static expected return rates. V2 can integrate live data.
 ---
 
 *Last updated: 15 November 2026*  
-*Items are ordered by priority, not implementation sequence.*
+*Items are ordered by priority, not implementation sequence.*  
+*9 items total — last added: #8 (DB strategy evaluation).*
