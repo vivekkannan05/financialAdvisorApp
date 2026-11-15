@@ -50,18 +50,35 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
   }, []);
 
+  function coerceNumbers<T extends Record<string, unknown>>(base: T, incoming?: Record<string, unknown>): T {
+    if (!incoming) return base;
+    const result = { ...base };
+    for (const key of Object.keys(result)) {
+      if (key in incoming) {
+        result[key as keyof T] = (typeof base[key] === 'number'
+          ? Number(incoming[key]) || 0
+          : incoming[key]) as T[keyof T];
+      }
+    }
+    return result;
+  }
+
   function mergeData(base: ProfileData, incoming: Partial<ProfileData>): ProfileData {
     return {
-      personal: { ...base.personal, ...incoming?.personal },
-      income: { ...base.income, ...incoming?.income },
-      expenses: { ...base.expenses, ...incoming?.expenses },
-      assets: { ...base.assets, ...incoming?.assets },
-      liabilities: {
-        homeLoan: { ...base.liabilities.homeLoan, ...incoming?.liabilities?.homeLoan },
-        carLoan: { ...base.liabilities.carLoan, ...incoming?.liabilities?.carLoan },
+      personal: {
+        ...coerceNumbers(base.personal, incoming?.personal as Record<string, unknown>),
+        riskTolerance: (incoming?.personal?.riskTolerance as string) ?? base.personal.riskTolerance,
+        city: (incoming?.personal?.city as string) ?? base.personal.city,
       },
-      insurance: { ...base.insurance, ...incoming?.insurance },
-      investments: { ...base.investments, ...incoming?.investments },
+      income: coerceNumbers(base.income, incoming?.income as Record<string, unknown>),
+      expenses: coerceNumbers(base.expenses, incoming?.expenses as Record<string, unknown>),
+      assets: coerceNumbers(base.assets, incoming?.assets as Record<string, unknown>),
+      liabilities: {
+        homeLoan: coerceNumbers(base.liabilities.homeLoan, incoming?.liabilities?.homeLoan as Record<string, unknown>),
+        carLoan: coerceNumbers(base.liabilities.carLoan, incoming?.liabilities?.carLoan as Record<string, unknown>),
+      },
+      insurance: coerceNumbers(base.insurance, incoming?.insurance as Record<string, unknown>),
+      investments: coerceNumbers(base.investments, incoming?.investments as Record<string, unknown>),
       goals: incoming?.goals ?? base.goals,
     };
   }
