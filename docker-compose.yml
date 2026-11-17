@@ -2,11 +2,13 @@ services:
   dynamodb-local:
     image: amazon/dynamodb-local:latest
     container_name: fa-dynamodb
+    user: root
     ports:
       - "8000:8000"
     volumes:
-      - dynamodb-data:/home/dynamodblocal/data
-    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data"
+      - dynamodb-data:/data
+    entrypoint: ["java", "-Djava.library.path=/home/dynamodblocal/DynamoDBLocal_lib"]
+    command: ["-jar", "/home/dynamodblocal/DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/data"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8000 || exit 1"]
       interval: 5s
